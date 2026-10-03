@@ -1,0 +1,10 @@
+# build outputs and game-derived data (never commit RE4 or Minecraft files)
+*.dll
+*.o
+*.jar
+*.class
+*.bin
+*.log
+out/
+__pycache__/
+HANDOFF.md
