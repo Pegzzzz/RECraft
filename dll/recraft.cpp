@@ -312,7 +312,7 @@ BOOL WINAPI DllMain(HINSTANCE inst, DWORD reason, LPVOID) {
         char* s = strrchr(g_dir, '\\'); if (s) *s = 0;
         char path[MAX_PATH]; snprintf(path, sizeof path, "%s\\RECraft.log", g_dir);
         g_log = fopen(path, "w");
-        Log("RECraft 0.34 loaded (Minecraft drives Leon, room collision, combat, blocks, cutscenes, merchant gear, Minecraft item names)");
+        Log("RECraft 0.35 loaded (Minecraft drives Leon, room collision, combat, blocks, cutscenes, merchant gear, Minecraft item names)");
         CreateThread(nullptr, 0, Worker, nullptr, 0, nullptr);
     }
     return TRUE;

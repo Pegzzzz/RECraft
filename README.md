@@ -63,7 +63,7 @@ combat, building — while RE4 draws everything. Built on the idea and protocol 
 ## Install
 
 Step by step: **[INSTALL.md](INSTALL.md)**. In short: `winmm.dll` from the [release](../../releases) goes in
-`Resident Evil 4\Bin32\`; `RECraft-1.12.0.jar` goes in a Prism Minecraft 26.3 Fabric instance with Fabric API and
+`Resident Evil 4\Bin32\`; `RECraft-1.13.0.jar` goes in a Prism Minecraft 26.3 Fabric instance with Fabric API and
 SkyCraft; `tools\build_rooms.ps1` builds the room collision from your own game files. Start RE4, then Minecraft.
 
 ## Controls
@@ -71,7 +71,7 @@ SkyCraft; `tools\build_rooms.ps1` builds the room collision from your own game f
 | Key | |
 |---|---|
 | Minecraft's keys | everything (move, jump, sneak, attack, use, inventory, hotbar) |
-| **F** | RE4's action button: doors, windows, ladders, items, the merchant |
+| **F** | RE4's action button: doors, windows, ladders, items, the merchant. Press F twice quickly at a door to kick it open |
 | **Esc** | RE4: skip a cutscene, pause menu |
 | **O** | Minecraft's pause / options menu |
 | **F6** | hand Leon to RE4 (or back to Minecraft) by hand |

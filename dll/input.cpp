@@ -52,6 +52,7 @@ static void InitTable() {
 
 constexpr uint32_t DIK_ESC = 0x01, DIK_O_KEY = 0x18, DIK_F6_KEY = 0x40, DIK_F_KEY = 0x21, DIK_E_KEY = 0x12;
 
+static bool ActionStaysF();
 static bool g_keyDown[256];       // what Minecraft has been told
 static bool g_btnDown[8];
 static bool g_rawKey[256];        // what the keyboard really shows (for edge detection)
@@ -86,7 +87,7 @@ static void KeyEdge(uint32_t dik, bool down) {
     g_rawKey[dik] = down;
     auto& S = bridge::S();
     if (dik == DIK_F6_KEY) { if (down) SetRe4Control(!g_re4Control); return; }
-    if (!S.puppet) return;
+    if (!S.puppet) { if (dik == DIK_F_KEY && down && ActionStaysF()) BridgeLog("input: F -> RE4 action (E) during RE4's move"); return; }
     if (!S.mcScreenOpen) {
         if (dik == DIK_ESC) { if (down) BridgeLog("input: Esc -> RE4 (skip / pause menu)"); return; }   // passed to RE4 (AfterGet*)
         if (dik == DIK_O_KEY) { if (down) { ReleaseAllToMc(); bridge::PushInput(bridge::kInOpenMenu, 0); } return; }
@@ -103,6 +104,12 @@ static void KeyEdge(uint32_t dik, bool down) {
         if (down && S.mcScreenOpen) SendText(dik);
     }
 }
+
+// RE4 runs one of its own moves while Minecraft has the player (puppet off for a door, a vault, a cutscene...): F
+// stays RE4's action key. Opening a door, RE4 kicks it instead when the action key is pressed again within 45 frames
+// (decompilation emdoor.cpp plemDoorOpen: Key.trg & 0x400 -> plemDoorKick) - before 0.35 that second F press never
+// reached RE4 as its action key, so double-pressing F couldn't kick a door open. Not under F6 (RE4's own keys then).
+static bool ActionStaysF() { return !g_re4Control && bridge::McAlive() && bridge::S().everPuppet; }
 
 // Is the player holding a movement key (W/A/S/D)? Leon's position is predicted a tick ahead while moving.
 bool MovementHeld() { return g_keyDown[0x11] || g_keyDown[0x1E] || g_keyDown[0x1F] || g_keyDown[0x20]; }
@@ -167,6 +174,8 @@ static HRESULT AfterGetState(HRESULT hr, DWORD cb, LPVOID data) {
             memset(k, 0, 256);
             if (f) k[DIK_E_KEY] = 0x80;   // RE4's action key
             if (esc) k[DIK_ESC] = 0x80;   // RE4's skip / pause menu
+        } else if (ActionStaysF() && (k[DIK_F_KEY] & 0x80)) {
+            k[DIK_E_KEY] = 0x80;          // F is still the action key while RE4 plays a move (the door kick's second press)
         }
     } else if (cb == sizeof(DIMOUSESTATE) || cb == sizeof(DIMOUSESTATE2)) {   // mouse
         DIMOUSESTATE2* m = (DIMOUSESTATE2*)data;
@@ -199,6 +208,12 @@ static HRESULT AfterGetData(HRESULT hr, IDirectInputDevice8A* dev, DWORD cb, LPD
             else if (e->dwOfs == DIMOFS_Z) bridge::PushInput(bridge::kInScroll, 0, (LONG)e->dwData > 0 ? 120 : -120);
             else if (e->dwOfs >= DIMOFS_BUTTON0 && e->dwOfs <= DIMOFS_BUTTON7)
                 MouseButton(e->dwOfs - DIMOFS_BUTTON0, (e->dwData & 0x80) != 0);
+        }
+    }
+    if (!bridge::S().puppet && ActionStaysF() && type == DI8DEVTYPE_KEYBOARD) {
+        for (DWORD i = 0; i < n; i++) {   // F -> E for RE4 (other keys stay: QTE prompts need them)
+            DIDEVICEOBJECTDATA* e = (DIDEVICEOBJECTDATA*)((BYTE*)od + i * cb);
+            if ((e->dwOfs & 0xFF) == DIK_F_KEY) e->dwOfs = DIK_E_KEY;
         }
     }
     if (bridge::S().puppet && type == DI8DEVTYPE_KEYBOARD) {   // keep only F, renamed to RE4's action key

@@ -6,6 +6,7 @@
 // Runs on RE4's render thread (Present hook).
 
 #include "link.h"
+#include "memcheck.h"
 #include <d3d9.h>
 #include <vector>
 #include <map>
@@ -46,28 +47,47 @@ static std::vector<Vtx> g_avV; static std::vector<AvBatch> g_avB;
 static bool g_avShow = false; static float g_avPart[7][3][4];   // per part: world = M * model vertex (mm)
 void SetAvatar(bool show, const float parts[7][3][4]) { g_avShow = show; if (parts) memcpy(g_avPart, parts, sizeof g_avPart); }
 bool HaveAvatar() { return !g_avB.empty(); }
-// Is the camera inside (or within `margin` mm of) one of the posed body's parts? RE4's camera comes very close to
-// Leon in grabs, vaults and cutscene close-ups, and starts from Minecraft's eye (inside the head) when RE4 takes
-// Leon over; the Minecraft body is bulkier than Leon, so the picture filled with black boxes (0.33).
-bool AvatarAround(const float parts[7][3][4], const float eye[3], float margin) {
+// Where RE4's camera really is this frame: the eye of the view matrix RE4 draws with (the one GameMatrices
+// recognised - GLOBAL_WK mat_0 or v_mat). In story cutscenes GLOBAL_WK's camera position isn't the event
+// camera, so 0.34's closeness test there looked at the wrong place (the body filled close-ups).
+static int g_viewKnown = -1;
+bool CameraEye(float eye[3]) {
+    uint8_t* gl = g_ppGlobal ? (uint8_t*)*g_ppGlobal : nullptr;
+    if (!mem::Readable(gl, 0x130)) return false;
+    if (g_viewKnown < 0) { memcpy(eye, gl + 0x74 + 0xA4, 12); return eye[0] != 0 || eye[2] != 0; }
+    float v[3][4]; memcpy(v, gl + (g_viewKnown == 0 ? 0x74 : 0xA4), 48);
+    for (int k = 0; k < 3; k++) eye[k] = -(v[0][k] * v[0][3] + v[1][k] * v[1][3] + v[2][k] * v[2][3]);
+    return eye[0] == eye[0] && fabsf(eye[0]) < 1e7f && fabsf(eye[1]) < 1e7f && fabsf(eye[2]) < 1e7f;
+}
+// Distance (mm) from `eye` to the posed head's centre, and to the nearest point of any part's box (0 inside one).
+float AvatarDistance(const float parts[7][3][4], const float eye[3], float* nearest) {
     float lo[7][3], hi[7][3]; bool any[7] = {};
     for (auto& b : g_avB) {
         int pi = b.part >= 1 && b.part <= 6 ? b.part : 0;
         const float (*M)[4] = parts[pi];
         for (uint32_t i = b.first; i < b.first + b.count && i < g_avV.size(); i++) {
-            const Vtx& v = g_avV[i];
+            const Vtx& vv = g_avV[i];
             for (int r = 0; r < 3; r++) {
-                float w = M[r][0] * v.x + M[r][1] * v.y + M[r][2] * v.z + M[r][3];
+                float w = M[r][0] * vv.x + M[r][1] * vv.y + M[r][2] * vv.z + M[r][3];
                 if (!any[pi] || w < lo[pi][r]) lo[pi][r] = w;
                 if (!any[pi] || w > hi[pi][r]) hi[pi][r] = w;
             }
             any[pi] = true;
         }
     }
-    for (int k = 0; k < 7; k++)
-        if (any[k] && eye[0] > lo[k][0] - margin && eye[0] < hi[k][0] + margin && eye[1] > lo[k][1] - margin &&
-            eye[1] < hi[k][1] + margin && eye[2] > lo[k][2] - margin && eye[2] < hi[k][2] + margin) return true;
-    return false;
+    float best = 1e9f;
+    for (int k = 0; k < 7; k++) {
+        if (!any[k]) continue;
+        float d2 = 0;
+        for (int r = 0; r < 3; r++) { float d = eye[r] < lo[k][r] ? lo[k][r] - eye[r] : eye[r] > hi[k][r] ? eye[r] - hi[k][r] : 0; d2 += d * d; }
+        best = fminf(best, sqrtf(d2));
+    }
+    if (nearest) *nearest = best;
+    int h = any[1] ? 1 : 0;   // part 1 = the head
+    if (!any[h]) return 1e9f;
+    float d2 = 0;
+    for (int r = 0; r < 3; r++) { float c = (lo[h][r] + hi[h][r]) * 0.5f - eye[r]; d2 += c * c; }
+    return sqrtf(d2);
 }
 
 static uint8_t* g_ring = nullptr;
@@ -324,7 +344,8 @@ static void BuildWorldEntities(const float eye[3]) {
                 // blurred cross in the middle of the screen - the table updates 20 times a second, the screen 60)
                 float o[3] = {e.x * 1000.f - eye[0], e.y * 1000.f - eye[1], e.z * 1000.f - eye[2]};
                 float dist = sqrtf(o[0] * o[0] + o[1] * o[1] + o[2] * o[2]);
-                if (dist < 2500.f && (dist < 400.f || fabsf(o[0] * d[0] + o[1] * d[1] + o[2] * d[2]) > 0.9f * dist)) break;
+                // 0.34 hid them only within 2.5 m; the table can show the arrow a tick (3 blocks) further on, still end-on
+                if (dist < 9000.f && (dist < 500.f || fabsf(o[0] * d[0] + o[1] * d[1] + o[2] * d[2]) > 0.96f * dist)) break;
             }
             float a[3] = {d[2], 0.f, -d[0]}; float al = sqrtf(a[0] * a[0] + a[2] * a[2]);
             if (al < 1e-4f) { a[0] = 1.f; a[2] = 0.f; al = 1.f; }
@@ -423,7 +444,7 @@ static bool GameMatrices(M4& view, M4& proj, float aspect) {
     // Once one of the two has been confirmed as RE4's view matrix, keep using it when the eye check fails for a
     // frame (the first frame after a menu, a pick-up, a door: our eye and RE4's camera are a frame apart). RE4
     // drew that frame with it, so the blocks stay put; 0.31 switched to Minecraft's eye there and they jumped.
-    static int known = -1;
+    int& known = g_viewKnown;
     if (viewOk) known = ea < eb ? 0 : 1;
     else if (known >= 0 && (known == 0 ? ea : eb) < 1e29f) { v = known == 0 ? a : b; viewOk = true; }
     // projection: GX perspective has -1 in [3][2]

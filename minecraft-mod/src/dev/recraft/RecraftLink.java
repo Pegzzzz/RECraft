@@ -187,6 +187,8 @@ public final class RecraftLink implements ModInitializer {
 			// every time the world is started: a fresh inventory (the gear comes back from Leon's case)
 			if (this.resetFor != server && player.isAlive()) {
 				this.resetFor = server;
+				// Leon's death already says it ("You are dead"): no "Pegz was killed" line left in the HUD's chat after the reload
+				level.getGameRules().set(net.minecraft.world.level.gamerules.GameRules.SHOW_DEATH_MESSAGES, false, server);
 				Gear.reset(player);
 				this.lastSpec = null;
 				player.sendSystemMessage(Component.literal("RECraft: fresh start - your sword, bow and armour come from Leon's attache case. Ammo Leon picks up turns into arrows, herbs into steak, crates you break into planks.").withStyle(ChatFormatting.GOLD));

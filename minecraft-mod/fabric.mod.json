@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "recraft",
-  "version": "1.12.0",
+  "version": "1.13.0",
   "name": "RECraft",
   "description": "Resident Evil 4 x Minecraft, built on SkyCraft by chasmlol (github.com/chasmlol/SkyCraft). RECraft's Minecraft side: one shared health with RE4, gear from RE4's merchant (Leon's weapons, tune-ups and attache case become Minecraft swords, axes, bow, armour and enchantments; ammo becomes arrows, herbs become steak), a wide sword sweep, armour that softens RE4's hits, blocks that stop RE4's enemies, sneaking that stops at RE4's ledges.",
   "authors": [

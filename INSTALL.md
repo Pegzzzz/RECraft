@@ -23,7 +23,7 @@ That's the whole RE4 side. To remove RECraft later, delete `winmm.dll` (and `REC
    - **Fabric API** for 26.3 ([Modrinth](https://modrinth.com/mod/fabric-api)) - tested with `0.161.0+26.3`
    - **SkyCraft**'s Fabric mod from [SkyCraft's releases](https://github.com/chasmlol/SkyCraft/releases) - version **0.1.2**
      (the `skycraft-fabric-…jar` / `skycraft-…jar` inside the release)
-   - **`RECraft-1.12.0.jar`** from the [RECraft release](../../releases)
+   - **`RECraft-1.13.0.jar`** from the [RECraft release](../../releases)
 4. *Edit → Settings → Java*: tick **Java arguments** and enter
    `--enable-native-access=ALL-UNNAMED -Dskycraft.startHidden=true`
    (Prism downloads Java 25 by itself; 4 GB of memory is plenty.)
@@ -58,7 +58,7 @@ Without it every room is a flat floor (you'll walk through walls and over stairs
 
 | Key | |
 |---|---|
-| **F** | RE4's action button: doors, ladders, items, the merchant |
+| **F** | RE4's action button: doors, ladders, items, the merchant. Press F twice quickly at a door to kick it open |
 | **Esc** | RE4: skip a cutscene, pause menu |
 | **O** | Minecraft's pause / options menu |
 | **F6** | hand Leon back to RE4's own controls (or back to Minecraft) |
