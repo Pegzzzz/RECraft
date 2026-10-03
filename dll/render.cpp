@@ -20,7 +20,7 @@ extern volatile ULONGLONG g_lastPresent;
 namespace bridge { float McYawToHeading(float yaw); void TickStats(int& n, double& avg, double& worst, int& late, int& snaps); }
 namespace input { extern volatile bool g_re4Control; }
 namespace combat { void Tick(uint8_t* view, bool puppet); }
-namespace blocks { void Draw(IDirect3DDevice9* dev, bool mcAlive); void SetAvatar(bool show, const float parts[7][3][4]); bool HaveAvatar(); void OnReset(); void DrawPortrait(IDirect3DDevice9* dev, float x0, float y0, float x1, float y1); }
+namespace blocks { void Draw(IDirect3DDevice9* dev, bool mcAlive); void SetAvatar(bool show, const float parts[7][3][4]); bool HaveAvatar(); bool AvatarAround(const float parts[7][3][4], const float eye[3], float margin); void OnReset(); void DrawPortrait(IDirect3DDevice9* dev, float x0, float y0, float x1, float y1); }
 
 namespace items { void Tick(bool paused); }
 namespace render {
@@ -74,6 +74,7 @@ static bool SubScreenOpen() {
 static bool g_menuOpen = false;
 static bool g_leonNeeded = false;   // RE4 moves Leon and no Minecraft body can stand in: keep him visible
 static bool g_leonAction = false;   // RE4 is moving Leon itself (event, door, ladder, hit, grab, death)
+static bool g_avatarOn = false;     // the Minecraft body is standing in for Leon this frame
 uint8_t* g_idSys = nullptr;         // IDSystem (re4_tweaks' IdSys): the HUD pieces, set by RECraft.cpp
 // RE4's own HUD while Minecraft is the player: the life meter (IDC_LIFE_METER 0x21) and the ammo icon
 // (IDC_BLLT_ICON 0x32) are switched off through IDSystem::m_disp_off_2C (one bit per class, MSB first);
@@ -344,12 +345,16 @@ static bool GameBusy(const bridge::Leon& leon) {
     if (action != wasAction || (action && (r0 != lastR0 || r1 != lastR1)))
         BridgeLog("leon: %s (routine %u/%u)", action ? "RE4 action - RE4 moves Leon" : "action over - back to Minecraft", r0, r1);
     wasAction = action; lastR0 = r0; lastR1 = r1;
-    bool busy = leon.valid && (camIdle || movie || action);   // (STA_CINESCO stays set during normal play in UHD: logged only)
+    // STA_DIEDEMO (Status word 0 bit 0x100000): Leon's death and "You are dead" - RE4 keeps him to the end. 0.33 handed
+    // him back to Minecraft as soon as the death motion's routine ended, and the respawned Minecraft player walked the
+    // dead Leon (and the camera) around behind the red screen.
+    bool dying = (st[0] & 0x00100000) != 0;
+    bool busy = leon.valid && (camIdle || movie || action || dying);   // (STA_CINESCO stays set during normal play in UHD: logged only)
     static bool was = false; static uint32_t lastSig = 0;
-    uint32_t sig = (camIdle ? 1 : 0) | (movie ? 2 : 0) | (cinesco ? 4 : 0) | (event ? 8 : 0);
+    uint32_t sig = (camIdle ? 1 : 0) | (movie ? 2 : 0) | (cinesco ? 4 : 0) | (event ? 8 : 0) | (dying ? 16 : 0);
     if (busy != was || (busy && sig != lastSig)) {
-        BridgeLog("game %s (camera %s%s%s%s) status %08X %08X %08X %08X stop %08X", busy ? "BUSY - cutscene/door/menu, RE4 keeps Leon" : "back to gameplay",
-                  camIdle ? "idle" : "running", movie ? ", movie" : "", cinesco ? ", cinesco" : "", event ? ", event" : "",
+        BridgeLog("game %s (camera %s%s%s%s%s) status %08X %08X %08X %08X stop %08X", busy ? "BUSY - cutscene/door/menu, RE4 keeps Leon" : "back to gameplay",
+                  camIdle ? "idle" : "running", movie ? ", movie" : "", cinesco ? ", cinesco" : "", event ? ", event" : "", dying ? ", death" : "",
                   st[0], st[1], st[2], st[3], stop);
         was = busy; lastSig = sig;
     }
@@ -722,7 +727,13 @@ static HRESULT WINAPI PresentHook(IDirect3DDevice9* dev, const RECT* a, const RE
         if (evl != lastEvl) { BridgeLog("cutscene: %s", evl ? "it has its own Leon - hidden too, Minecraft body follows it" : "event Leon gone"); lastEvl = evl; }
         // RE4 itself moves Leon (QTEs, grabs, vaults, ladders, his death) or a cutscene has its own Leon: the
         // Minecraft body stands in. Not for pause / options menus; Leon's death counts even though it raises a menu flag.
-        bool actor = busy && !S.puppet && (!g_menuOpen || g_dieDemo) && (g_leonAction || evl);
+        // Leon's death: the body plays it out for its first seconds, then the red "You are dead" screen comes up over the
+        // scene and nothing of Minecraft's belongs on top of it (we draw after RE4, so it would cover the screen).
+        static ULONGLONG dieAt = 0;
+        ULONGLONG nowT = GetTickCount64();
+        if (!g_dieDemo) dieAt = 0; else if (!dieAt) dieAt = nowT;
+        bool dieEarly = g_dieDemo && nowT - dieAt < 2200;
+        bool actor = busy && !S.puppet && (!g_menuOpen || dieEarly) && (g_leonAction || evl || dieEarly);
         bool show = false;
         float parts[7][3][4];
         // a cutscene's own Leon that is going away has no skeleton any more: use the real Leon, or nothing
@@ -730,11 +741,30 @@ static HRESULT WINAPI PresentHook(IDirect3DDevice9* dev, const RECT* a, const RE
             show = PoseFromLeon(evl ? evl : pl, parts) || (evl && PoseFromLeon(pl, parts));
         // Nothing can stand in (no skeleton to pose, a QTE's own Leon...): RE4's Leon is shown instead of nobody
         // (0.32 and before hid him anyway - "the character disappears during QTEs").
-        g_leonNeeded = actor && !show;
+        // The camera inside / right against the body (grabs, vaults, close-ups, and the first frames after RE4 takes
+        // Leon: its camera starts at Minecraft's eye, inside the head): the body isn't drawn. A brief pass shows
+        // nobody; a close-up that lasts (cutscene shots of Leon's face) shows RE4's Leon instead.
+        static int closeFrames = 0;
+        bool close = false;
+        if (show) {
+            uint8_t* gl = g_ppGlobal ? (uint8_t*)*g_ppGlobal : nullptr;
+            float cp[3];
+            if (Readable(gl, 0x124)) {
+                memcpy(cp, gl + 0x74 + 0xA4, 12);   // GLOBAL_WK::Camera param.pos (what blocks.cpp draws with)
+                close = (cp[0] != 0 || cp[2] != 0) && blocks::AvatarAround(parts, cp, closeFrames ? 300.f : 180.f);
+            }
+        }
+        static int closeLogs = 0;
+        if (close && !closeFrames && closeLogs++ < 20) BridgeLog("avatar: camera against the Minecraft body - not drawn for this shot");
+        closeFrames = close ? closeFrames + 1 : 0;
+        if (close) show = false;
+        g_leonNeeded = actor && !show && (!close || closeFrames > 20);
         static uint8_t* evlZeroed = nullptr;
-        if (evl && show && g_wantHidden && cfg::hideLeonInCutscenes) { float z = 0.f; memcpy(evl + 0x154, &z, 4); evlZeroed = evl; }   // cModel::invisible_factor
+        bool standIn = show || (close && closeFrames <= 20);   // the cutscene's Leon stays hidden for a brief pass too
+        if (evl && standIn && g_wantHidden && cfg::hideLeonInCutscenes) { float z = 0.f; memcpy(evl + 0x154, &z, 4); evlZeroed = evl; }   // cModel::invisible_factor
         else if (evl && evl == evlZeroed) { float o = 1.f; memcpy(evl + 0x154, &o, 4); evlZeroed = nullptr; }
         blocks::SetAvatar(show, show ? parts : nullptr);
+        g_avatarOn = show;
         static bool wasNeeded = false;
         if (g_leonNeeded != wasNeeded) { BridgeLog("avatar: %s", g_leonNeeded ? "the Minecraft body can't stand in here - RE4's Leon shown" : "Leon hidden again"); wasNeeded = g_leonNeeded; }
         if (show != was) BridgeLog("avatar: Minecraft body %s", show ? "shown in Leon's place" : "hidden");
@@ -747,7 +777,9 @@ static HRESULT WINAPI PresentHook(IDirect3DDevice9* dev, const RECT* a, const RE
     HideLeonTick(false);
     CalibrateFov();
     items::Tick(g_menuOpen);   // Minecraft items on the floor turn slowly (not while RE4 shows one up close)
-    if (!g_menuOpen || g_dieDemo) { LARGE_INTEGER b0, b1; QueryPerformanceCounter(&b0); blocks::Draw(dev, bridge::McAlive()); QueryPerformanceCounter(&b1); g_blkTicks += b1.QuadPart - b0.QuadPart; }
+    // Leon's death: Minecraft's world and body only while the body plays the death - not over "You are dead" (0.33 drew
+    // the blocks on top of the red screen)
+    if (!g_menuOpen || (g_dieDemo && g_avatarOn)) { LARGE_INTEGER b0, b1; QueryPerformanceCounter(&b0); blocks::Draw(dev, bridge::McAlive()); QueryPerformanceCounter(&b1); g_blkTicks += b1.QuadPart - b0.QuadPart; }
     Re4HudTick(S.everPuppet && bridge::McAlive() && !input::g_re4Control);
     // the radio (Hunnigan's video call): the Minecraft player's face in Leon's "out going image" panel
     if (g_menuOpen && (g_subType & 0x20) && S.everPuppet && !input::g_re4Control) blocks::DrawPortrait(dev, 0.699f, 0.148f, 0.921f, 0.619f);

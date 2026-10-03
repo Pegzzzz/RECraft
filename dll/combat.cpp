@@ -114,12 +114,16 @@ static const char* EnemyName(int id) {   // re4_tweaks' names
 // Shoot-down scenery (decompilation id + 0x10): emitem 0x5C (spinels and other items hanging from the ceiling or a
 // wall, blue medallions), emtorch 0x57 (lamps, candles, braziers), emhit 0x5D (shootable targets: bells, switches,
 // beetles), emBar 0x61 (wooden boards across a passage). Each takes a gun hit like Leon's.
-static bool IsShootable(int id) { return id == 0x5C || id == 0x57 || id == 0x5D || id == 0x61; }
+// The traps (em2a, 0x2A - left out of the enemy list): a bear trap snaps shut from any weapon hit but the
+// hand/flash/mine kinds (decompilation em2aDmCkTrap1: hp 0, Trap1Break; on the dog it frees it), and a
+// tripwire bomb goes off (em2aDmCkTrap2).
+static bool IsShootable(int id) { return id == 0x5C || id == 0x57 || id == 0x5D || id == 0x61 || id == 0x2A; }
 static bool IsBreakable(int id) { return id == 0x53 || id == 0x56 || id == 0x58 || id == 0x5E || IsShootable(id); }
 static const char* BreakableName(int id) {
     switch (id) {
     case 0x53: return "Box"; case 0x56: return "Window"; case 0x58: return "Barrel"; case 0x5E: return "Boarded window";
     case 0x5C: return "Item"; case 0x57: return "Lamp"; case 0x5D: return "Target"; case 0x61: return "Boards";
+    case 0x2A: return "Trap";
     default: return "Object";
     }
 }
@@ -132,13 +136,14 @@ static void BreakableSize(const uint8_t* e, int id, float& w, float& h) {
     case 0x57: w = 0.7f; h = 0.8f; return;
     case 0x53: w = 1.4f; h = 1.3f; break; case 0x58: w = 1.3f; h = 1.4f; break;
     case 0x5D: case 0x61: w = 1.0f; h = 1.0f; break;
+    case 0x2A: w = 0.9f; h = 0.5f; break;   // flat on the floor: low, so Minecraft hits it by looking down
     default: w = 1.4f; h = 1.8f; break;
     }
     float r = Rd<float>(e, 0x2B4 + 0xC), ht = Rd<float>(e, 0x2B4 + 0x14);
     if (r > 50.f && r < 3000.f && 2.f * r / 1000.f + 0.4f > w) w = 2.f * r / 1000.f + 0.4f;
     if (ht > 50.f && ht < 5000.f && ht / 1000.f + 0.3f > h) h = ht / 1000.f + 0.3f;
 }
-static bool Passive(int id) { return id == 0x26 || id == 0x27 || id == 0x28 || id == 0x18; }   // cow, bass, chicken, the merchant
+static bool Passive(int id) { return id == 0x21 || id == 0x26 || id == 0x27 || id == 0x28 || id == 0x18; }   // the dog (chapter 1's friend), cow, bass, chicken, the merchant
 
 // ------------------------------------------------------------------ actor table (to Minecraft)
 #pragma pack(push, 1)

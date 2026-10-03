@@ -23,7 +23,7 @@ That's the whole RE4 side. To remove RECraft later, delete `winmm.dll` (and `REC
    - **Fabric API** for 26.3 ([Modrinth](https://modrinth.com/mod/fabric-api)) - tested with `0.161.0+26.3`
    - **SkyCraft**'s Fabric mod from [SkyCraft's releases](https://github.com/chasmlol/SkyCraft/releases) - version **0.1.2**
      (the `skycraft-fabric-…jar` / `skycraft-…jar` inside the release)
-   - **`RECraft-1.11.0.jar`** from the [RECraft release](../../releases)
+   - **`RECraft-1.12.0.jar`** from the [RECraft release](../../releases)
 4. *Edit → Settings → Java*: tick **Java arguments** and enter
    `--enable-native-access=ALL-UNNAMED -Dskycraft.startHidden=true`
    (Prism downloads Java 25 by itself; 4 GB of memory is plenty.)

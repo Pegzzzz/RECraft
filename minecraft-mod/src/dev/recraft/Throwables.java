@@ -62,7 +62,10 @@ final class Throwables {
 			return false;
 		}
 		String s = n.getString();
-		return s.equals("Window") || s.equals("Box") || s.equals("Barrel") || s.equals("Boarded window") || s.equals("Lock");
+		return switch (s) {
+			case "Window", "Box", "Barrel", "Boarded window", "Lock", "Item", "Lamp", "Target", "Boards", "Trap" -> true;
+			default -> false;
+		};
 	}
 
 	// ------------------------------------------------------------------ using items

@@ -28,7 +28,8 @@ combat, building — while RE4 draws everything. Built on the idea and protocol 
 - **Your blocks are real.** Blocks you place appear in RE4, are hidden behind its walls, and stop enemies.
   Minecraft's block outline, breaking cracks, dropped items and arrows show up in RE4 too.
 - **RE4's scenery reacts.** Shut doors block you, padlocks break, and the things RE4 makes you shoot
-  (spinels and other hanging treasure, blue medallions, lamps, boarded passages) take your arrows and swings.
+  (spinels and other hanging treasure, blue medallions, lamps, boarded passages, bear traps and tripwire bombs) take
+  your arrows and swings.
 - **RE4 still plays out.** Cutscenes, doors, ladders, vaults and grabs run as RE4 made them, with your
   Minecraft character in Leon's place; Minecraft picks Leon up when they end.
 - **RE4's merchant decides your Minecraft gear.** Buy and tune up weapons in RE4's own shop and your
@@ -62,7 +63,7 @@ combat, building — while RE4 draws everything. Built on the idea and protocol 
 ## Install
 
 Step by step: **[INSTALL.md](INSTALL.md)**. In short: `winmm.dll` from the [release](../../releases) goes in
-`Resident Evil 4\Bin32\`; `RECraft-1.11.0.jar` goes in a Prism Minecraft 26.3 Fabric instance with Fabric API and
+`Resident Evil 4\Bin32\`; `RECraft-1.12.0.jar` goes in a Prism Minecraft 26.3 Fabric instance with Fabric API and
 SkyCraft; `tools\build_rooms.ps1` builds the room collision from your own game files. Start RE4, then Minecraft.
 
 ## Controls

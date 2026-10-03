@@ -46,6 +46,29 @@ static std::vector<Vtx> g_avV; static std::vector<AvBatch> g_avB;
 static bool g_avShow = false; static float g_avPart[7][3][4];   // per part: world = M * model vertex (mm)
 void SetAvatar(bool show, const float parts[7][3][4]) { g_avShow = show; if (parts) memcpy(g_avPart, parts, sizeof g_avPart); }
 bool HaveAvatar() { return !g_avB.empty(); }
+// Is the camera inside (or within `margin` mm of) one of the posed body's parts? RE4's camera comes very close to
+// Leon in grabs, vaults and cutscene close-ups, and starts from Minecraft's eye (inside the head) when RE4 takes
+// Leon over; the Minecraft body is bulkier than Leon, so the picture filled with black boxes (0.33).
+bool AvatarAround(const float parts[7][3][4], const float eye[3], float margin) {
+    float lo[7][3], hi[7][3]; bool any[7] = {};
+    for (auto& b : g_avB) {
+        int pi = b.part >= 1 && b.part <= 6 ? b.part : 0;
+        const float (*M)[4] = parts[pi];
+        for (uint32_t i = b.first; i < b.first + b.count && i < g_avV.size(); i++) {
+            const Vtx& v = g_avV[i];
+            for (int r = 0; r < 3; r++) {
+                float w = M[r][0] * v.x + M[r][1] * v.y + M[r][2] * v.z + M[r][3];
+                if (!any[pi] || w < lo[pi][r]) lo[pi][r] = w;
+                if (!any[pi] || w > hi[pi][r]) hi[pi][r] = w;
+            }
+            any[pi] = true;
+        }
+    }
+    for (int k = 0; k < 7; k++)
+        if (any[k] && eye[0] > lo[k][0] - margin && eye[0] < hi[k][0] + margin && eye[1] > lo[k][1] - margin &&
+            eye[1] < hi[k][1] + margin && eye[2] > lo[k][2] - margin && eye[2] < hi[k][2] + margin) return true;
+    return false;
+}
 
 static uint8_t* g_ring = nullptr;
 static IDirect3DDevice9* g_dev = nullptr;
@@ -273,7 +296,7 @@ static void WBox(std::vector<Vtx>& o, const float lo[3], const float hi[3], floa
     }
 }
 // Opaque (alpha-tested) world entities: items, blocks, arrows. Cracks and the outline come after the translucent pass.
-static void BuildWorldEntities() {
+static void BuildWorldEntities(const float eye[3]) {
     g_weV.clear();
     const uint32_t lit = 0xFFC8C8C8;   // no light values in the table: a fixed, slightly dim tone (RE4 is a night game)
     for (int i = 0; i < g_weN; i++) {
@@ -297,6 +320,12 @@ static void BuildWorldEntities() {
         case 1: {   // an arrow: two crossed strips along its flight direction (Minecraft's arrow is 0.9 blocks long)
             float pr = e.pitch * 0.0174532925f;
             float d[3] = {sinf(yr) * cosf(pr), sinf(pr), cosf(yr) * cosf(pr)};
+            {   // one just shot, still at the eye and flying straight away from it: only its back end would show (a big
+                // blurred cross in the middle of the screen - the table updates 20 times a second, the screen 60)
+                float o[3] = {e.x * 1000.f - eye[0], e.y * 1000.f - eye[1], e.z * 1000.f - eye[2]};
+                float dist = sqrtf(o[0] * o[0] + o[1] * o[1] + o[2] * o[2]);
+                if (dist < 2500.f && (dist < 400.f || fabsf(o[0] * d[0] + o[1] * d[1] + o[2] * d[2]) > 0.9f * dist)) break;
+            }
             float a[3] = {d[2], 0.f, -d[0]}; float al = sqrtf(a[0] * a[0] + a[2] * a[2]);
             if (al < 1e-4f) { a[0] = 1.f; a[2] = 0.f; al = 1.f; }
             a[0] /= al; a[2] /= al;
@@ -674,7 +703,9 @@ void Draw(IDirect3DDevice9* dev, bool mcAlive) {
             }
         }
         // dropped items and blocks, arrows, thrown pearls / fire charges (alpha-tested, like the blocks)
-        BuildWorldEntities();
+        float camEye[3];   // the camera's position from the view matrix (row vectors: eye = -R * t)
+        for (int k = 0; k < 3; k++) camEye[k] = -(view.m[k][0] * view.m[3][0] + view.m[k][1] * view.m[3][1] + view.m[k][2] * view.m[3][2]);
+        BuildWorldEntities(camEye);
         if (!g_weV.empty()) { dev->SetTexture(0, g_atlas); DrawList(dev, g_weV, 0, (uint32_t)g_weV.size()); }
         // translucent (water, glass, ice, particles)
         dev->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
