@@ -2,7 +2,9 @@
 
 ## SkyCraft
 
-RECraft implements SkyCraft's shared-memory protocol and uses its DirectInput-to-SDL key table (dll/input.cpp).
+RECraft's Minecraft mod includes a modified copy of SkyCraft's Fabric mod (`minecraft-mod/src/dev/recraft/core`,
+renamed and adapted to Resident Evil 4), and the DLL implements SkyCraft's shared-memory protocol and uses its
+DirectInput-to-SDL key table (dll/input.cpp). Source: https://github.com/chasmlol/SkyCraft
 
 ```
 MIT License

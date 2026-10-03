@@ -1,5 +1,5 @@
-// bridge.cpp - RE4 side of the SkyCraft link: shared memory, state, input ring, overlay, collision.
-// Layout follows SkyCraft/protocol/skycraft_protocol.h (MIT License, (c) 2026 chasmlol), protocol v11.
+// bridge.cpp - RE4 side of the RECraft link: shared memory, state, input ring, overlay, collision.
+// Layout from SkyCraft's protocol/skycraft_protocol.h (MIT License, (c) 2026 chasmlol), protocol v11.
 //
 // Coordinates: 1 Minecraft block = 1000 RE4 units; axes map 1:1 (x->x, y->y, z->z).
 
@@ -13,7 +13,7 @@ namespace collision { bool TakeDoors(uint32_t epoch, std::vector<uint8_t>& msgs)
 
 namespace bridge {
 
-constexpr uint32_t kMagic = 0x43594B53, kVersion = 11;
+constexpr uint32_t kMagic = 0x43344552, kVersion = 12;   // "RE4C"; 12 = the merged RECraft mod (11 was SkyCraft 0.1.2 + RECraft)
 constexpr uint64_t kOffSky = 0x100, kOffMc = 0x200, kOffOvlCtl = 0x300, kOffOvlHdr = 0x340,
                    kOffInput = 0x1000, kOffActors = 0x12000, kOffEvents = 0x17000,
                    kOffEntities = 0x1C000, kOffCol = 0x20000, kColBytes = 32ull << 20;
@@ -77,7 +77,7 @@ bool Open() {
     if (g_view) return true;
     InitializeCriticalSection(&g_inputLock);
     g_map = CreateFileMappingW(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE,
-                               (DWORD)(kMappingBytes >> 32), (DWORD)kMappingBytes, L"Local\\SkyCraft_v1");
+                               (DWORD)(kMappingBytes >> 32), (DWORD)kMappingBytes, L"Local\\RECraft_v1");
     if (!g_map) { BridgeLog("bridge: CreateFileMapping failed (%lu)", GetLastError()); return false; }
     bool existed = GetLastError() == ERROR_ALREADY_EXISTS;
     g_view = (uint8_t*)MapViewOfFile(g_map, FILE_MAP_ALL_ACCESS, 0, 0, (SIZE_T)kOffPixels);
@@ -159,7 +159,7 @@ bool ReadMc(McState& m) {
 static uint8_t* g_slotView[3] = {};
 static uint64_t g_slotMapped[3] = {};
 static uint8_t* g_slotBase[3] = {};
-static uint32_t g_front = 2;   // SkyCraft convention: state 0 = middle slot 0, reader holds 2, writer 1
+static uint32_t g_front = 2;   // link convention: state 0 = middle slot 0, reader holds 2, writer 1
 
 static uint8_t* MapSlot(uint32_t i, uint64_t bytes) {
     if (g_slotView[i] && g_slotMapped[i] >= bytes) return g_slotBase[i];
@@ -306,7 +306,7 @@ bool Frame(const Leon& leon, bool re4Control, bool gameBusy, uint32_t vw, uint32
     bool alive = McAlive();
     if (alive && cfg::mcLowPriority) {   // RE4 first: Minecraft runs hidden next to it and competes for the CPU in big fights
         static uint32_t donePid = 0;
-        uint32_t pid = At<volatile uint32_t>(0x0C);   // SkyCraft link header: Minecraft's process id
+        uint32_t pid = At<volatile uint32_t>(0x0C);   // link header: Minecraft's process id
         if (pid && pid != donePid) {
             donePid = pid;
             HANDLE h = OpenProcess(PROCESS_SET_INFORMATION, FALSE, pid);
@@ -420,7 +420,7 @@ bool Frame(const Leon& leon, bool re4Control, bool gameBusy, uint32_t vw, uint32
     s.flags = (leon.valid ? 1u : 0u) | (re4HasControl ? 2u : 0u);
     s.worldId = 0x52450000u | leon.room;
     s.collisionEpoch = g_epoch;
-    s.posX = lx; s.posY = ly + 0.02; s.posZ = lz;   // 2 cm up: a hair below the floor made SkyCraft wait 6 s for ground
+    s.posX = lx; s.posY = ly + 0.02; s.posZ = lz;   // 2 cm up: a hair below the floor made Minecraft wait 6 s for ground
     s.yaw = yaw; s.pitch = pitch;
     s.teleportSeq = g_teleportSeq;
     s.viewportW = vw; s.viewportH = vh;

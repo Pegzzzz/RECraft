@@ -19,13 +19,14 @@ That's the whole RE4 side. To remove RECraft later, delete `winmm.dll` (and `REC
 
 1. Install **[Prism Launcher](https://prismlauncher.org/)** and sign in with your Microsoft account.
 2. **Add Instance** → Minecraft **26.3**, mod loader **Fabric** (0.19.5 or newer). Name it e.g. `RECraft`.
-3. Put these three files in the instance's `mods` folder (*Edit → Mods → View Folder*):
+3. Put these two files in the instance's `mods` folder (*Edit → Mods → View Folder*):
    - **Fabric API** for 26.3 ([Modrinth](https://modrinth.com/mod/fabric-api)) - tested with `0.161.0+26.3`
-   - **SkyCraft**'s Fabric mod from [SkyCraft's releases](https://github.com/chasmlol/SkyCraft/releases) - version **0.1.2**
-     (the `skycraft-fabric-…jar` / `skycraft-…jar` inside the release)
-   - **`RECraft-1.13.0.jar`** from the [RECraft release](../../releases)
+   - **`RECraft-1.14.0.jar`** from the [RECraft release](../../releases)
+
+   Updating from RECraft 0.35 or older: take the old `RECraft-…jar` **and `skycraft-…jar`** out of `mods` -
+   RECraft now includes its own link and won't start next to SkyCraft.
 4. *Edit → Settings → Java*: tick **Java arguments** and enter
-   `--enable-native-access=ALL-UNNAMED -Dskycraft.startHidden=true`
+   `--enable-native-access=ALL-UNNAMED -Drecraft.startHidden=true`
    (Prism downloads Java 25 by itself; 4 GB of memory is plenty.)
 5. Start the instance once on its own, let it reach the title screen, then close it. That's the setup done.
 
@@ -58,23 +59,32 @@ Without it every room is a flat floor (you'll walk through walls and over stairs
 
 | Key | |
 |---|---|
-| **F** | RE4's action button: doors, ladders, items, the merchant. Press F twice quickly at a door to kick it open |
+| **F** | RE4's action button: doors, windows, ladders, items, the merchant, typewriters, button prompts |
+| **F, F** (twice quickly) | at a door: kick it open |
+| **hold F** | against a pushable cabinet: push it |
 | **Esc** | RE4: skip a cutscene, pause menu |
 | **O** | Minecraft's pause / options menu |
-| **F6** | hand Leon back to RE4's own controls (or back to Minecraft) |
+| **F6** | hand Leon to RE4's own controls, and back to Minecraft |
+| `/recraft reset` | (Minecraft chat) empty the inventory for a new RE4 game |
+
+In the lake boat (Del Lago) RE4 uses its own controls: W / S speed, A / D steer, hold the right mouse button to raise
+a harpoon (a Minecraft spear), left click to throw it.
+
+**Some parts may still need F6:** if Leon gets stuck or an RE4 move or prompt doesn't respond, press F6, do that bit
+with RE4's own controls, then F6 again.
 
 Your Minecraft gear comes from Leon's attache case: buy and tune up weapons at RE4's merchant (see the README).
 
 ## Optional: Minecraft-looking items
 
 RE4's items on the floor, in the attache case and at the merchant can look like Minecraft items (swords, bow,
-arrows, steak, emeralds...). These are generated from **your own** Minecraft jar - see [tools/README.md](tools/README.md).
+arrows, steak, emeralds, chestplates for the cases, a map...), and the Del Lago harpoons like Minecraft spears. These are generated from **your own** Minecraft jar - see [tools/README.md](tools/README.md).
 
 ## Settings and troubleshooting
 
 - `Bin32\RECraft.ini` (made on first start): difficulty, shared health, what shows in cutscenes, and performance
   switches (`OverlayHalfRes`, `HalfRateVsync`, `LowLatency`, `MinecraftLowPriority`). Save and restart RE4 after editing.
 - `Bin32\RECraft.log`: what the RE4 side did (it says *ready*, *Minecraft CONNECTED*, *puppet ON* when all is well).
-- Nothing happens when Minecraft starts: check its `logs\latest.log` for `SkyCraft: linked` and `[RECraft] Minecraft
-  side ready`; make sure all three mods are in `mods` and the Java arguments are set.
+- Nothing happens when Minecraft starts: check its `logs\latest.log` for `RECraft: linked to RE4` and `[RECraft] Minecraft
+  side ready`; make sure both mods are in `mods` (and no SkyCraft jar) and the Java arguments are set.
 - Stuck somewhere: press **F6** to give Leon back to RE4's own controls, move, then F6 again.

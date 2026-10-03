@@ -1,35 +1,45 @@
 {
   "schemaVersion": 1,
   "id": "recraft",
-  "version": "1.13.0",
+  "version": "1.14.0",
   "name": "RECraft",
-  "description": "Resident Evil 4 x Minecraft, built on SkyCraft by chasmlol (github.com/chasmlol/SkyCraft). RECraft's Minecraft side: one shared health with RE4, gear from RE4's merchant (Leon's weapons, tune-ups and attache case become Minecraft swords, axes, bow, armour and enchantments; ammo becomes arrows, herbs become steak), a wide sword sweep, armour that softens RE4's hits, blocks that stop RE4's enemies, sneaking that stops at RE4's ledges.",
+  "description": "Resident Evil 4 x Minecraft: Minecraft runs hidden and plays RE4 as Leon. One shared health with RE4, gear from RE4's merchant (weapons, tune-ups and attache case become Minecraft swords, axes, bow, armour and enchantments; ammo becomes arrows, herbs become steak), a wide sword sweep, blocks that stop RE4's enemies, RE4's rooms as solid Minecraft collision.",
   "authors": [
     "Pegz"
   ],
   "license": "MIT",
-  "environment": "*",
+  "environment": "client",
   "entrypoints": {
     "main": [
+      "dev.recraft.core.RecraftCore",
       "dev.recraft.RecraftLink"
     ],
     "client": [
+      "dev.recraft.core.client.RecraftCoreClient",
       "dev.recraft.RecraftClient"
     ]
   },
   "depends": {
-    "fabricloader": "*",
-    "minecraft": "*",
-    "fabric-lifecycle-events-v1": "*",
-    "fabric-command-api-v2": "*",
-    "fabric-events-interaction-v0": "*",
-    "fabric-rendering-v1": "*",
-    "skycraft": "*"
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "fabric-api": "*"
   },
   "contributors": [
-    "chasmlol - creator of SkyCraft, which RECraft is built on"
+    "chasmlol - the original Minecraft link this mod grew from (MIT)"
   ],
   "mixins": [
-    "recraft.mixins.json"
-  ]
+    "recraft.mixins.json",
+    "recraft.core.mixins.json",
+    {
+      "config": "recraft.core.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "breaks": {
+    "skycraft": "*"
+  },
+  "contact": {
+    "sources": "https://github.com/Pegzzzz/RECraft"
+  }
 }

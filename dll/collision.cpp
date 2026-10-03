@@ -2,7 +2,7 @@
 //
 // RECraft_rooms.bin (built offline from every room's SAT file with JADERLINK's RE4-SAT-EAT-TOOL)
 // holds each room's collision triangles in the tool's units (RE4 world units / 100).
-// When Leon enters a room, a worker thread converts that room to SkyCraft collision messages:
+// When Leon enters a room, a worker thread converts that room to link collision messages:
 // exact triangles (Minecraft's player collides with these) plus a 1/8-block voxel shell (blocks,
 // items and mobs collide with these), bucketed into 8-block regions.
 //
@@ -245,7 +245,7 @@ static void Build(const Job& job) {
         int r0[3], r1[3];
         for (int a = 0; a < 3; a++) { r0[a] = FloorDiv8((int)floorf(mn[a])); r1[a] = FloorDiv8((int)floorf(mx[a])); }
         // Downward-facing triangles (ceilings) stay out of Minecraft's exact triangle collision:
-        // SkyCraft takes any surface up to 2.5 blocks above the feet as ground when it places the
+        // the Minecraft side takes any surface up to 2.5 blocks above the feet as ground when it places the
         // player (and catches jumps on "walkable" ones), which put the player on top of the house.
         // The voxel shell below still stops the head at the ceiling.
         float ux = ct.v[3] - ct.v[0], uy = ct.v[4] - ct.v[1], uz = ct.v[5] - ct.v[2];

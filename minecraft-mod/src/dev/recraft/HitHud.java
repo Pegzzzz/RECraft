@@ -26,7 +26,7 @@ final class HitHud {
 
 	static void register() {
 		try {
-			shmField = Class.forName("dev.skycraft.link.SkyLink").getDeclaredField("shm");
+			shmField = Class.forName("dev.recraft.core.link.CoreLink").getDeclaredField("shm");
 			shmField.setAccessible(true);
 		} catch (Throwable t) {
 			return;

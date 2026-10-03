@@ -11,7 +11,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Sneaking stops you at edges, like in Minecraft - also at the edges of Resident Evil 4's floors,
- * which are SkyCraft's own collision rather than Minecraft blocks (vanilla only checks blocks).
+ * which are the link's own collision (dev.recraft.core) rather than Minecraft blocks (vanilla only checks blocks).
  * After each client tick: if you're sneaking, were standing on something, and this tick's move
  * left nothing under your feet, the move is taken back (sliding along the edge when possible).
  */
@@ -24,9 +24,9 @@ public final class RecraftClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		try {
-			this.groundAt = Class.forName("dev.skycraft.client.SkyCollider").getMethod("groundAt", double.class, double.class, double.class, double.class);
+			this.groundAt = Class.forName("dev.recraft.core.client.CoreCollider").getMethod("groundAt", double.class, double.class, double.class, double.class);
 		} catch (Throwable t) {
-			System.out.println("[RECraft] SkyCraft's floor check not found - sneaking only stops at Minecraft blocks: " + t);
+			System.out.println("[RECraft] the core floor check not found - sneaking only stops at Minecraft blocks: " + t);
 		}
 		ClientTickEvents.END_CLIENT_TICK.register(this::tick);
 		HitHud.register();   // hit marker + enemy health bar
@@ -40,7 +40,7 @@ public final class RecraftClient implements ClientModInitializer {
 				return;
 			}
 			if (this.tick % 100 == 50) {
-				// SkyCraft asks for 8 chunks; RE4's stand-ins and your blocks only need a few, and the hidden
+				// The core asks for 8 chunks; RE4's stand-ins and your blocks only need a few, and the hidden
 				// Minecraft then leaves more CPU to RE4 in big fights
 				var o = mc.options;
 				if (o.renderDistance().get() > 5) {
@@ -53,7 +53,7 @@ public final class RecraftClient implements ClientModInitializer {
 			}
 			if (this.tick++ % 20 == 0) {   // stand-ins don't stop block placement (client side check)
 				for (net.minecraft.world.entity.Entity e : mc.level.entitiesForRendering()) {
-					if (e.getClass().getName().equals("dev.skycraft.combat.SkyrimActorEntity")) {
+					if (e.getClass().getName().equals("dev.recraft.core.combat.Re4ActorEntity")) {
 						e.blocksBuilding = false;
 					}
 				}

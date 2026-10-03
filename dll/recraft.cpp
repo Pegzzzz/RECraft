@@ -1,4 +1,4 @@
-// RECraft - RE4 UHD side of a SkyCraft-style link with Minecraft.
+// RECraft - RE4 UHD side of the link with Minecraft.
 // Loaded as winmm.dll next to bio4.exe; forwards every winmm export to the system copy.
 // Phase 2: Minecraft drives Leon. Input goes to Minecraft (input.cpp), RE4's camera follows the
 // Minecraft player's eye and Minecraft's HUD/hand is drawn over RE4 (render.cpp). F6 hands control
@@ -312,7 +312,7 @@ BOOL WINAPI DllMain(HINSTANCE inst, DWORD reason, LPVOID) {
         char* s = strrchr(g_dir, '\\'); if (s) *s = 0;
         char path[MAX_PATH]; snprintf(path, sizeof path, "%s\\RECraft.log", g_dir);
         g_log = fopen(path, "w");
-        Log("RECraft 0.35 loaded (Minecraft drives Leon, room collision, combat, blocks, cutscenes, merchant gear, Minecraft item names)");
+        Log("RECraft 0.36 loaded (Minecraft drives Leon, room collision, combat, blocks, cutscenes, merchant gear, Minecraft item names)");
         CreateThread(nullptr, 0, Worker, nullptr, 0, nullptr);
     }
     return TRUE;

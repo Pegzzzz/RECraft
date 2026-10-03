@@ -25,6 +25,9 @@ TARGETS = {
     44: ('stone_axe', True), 148: ('iron_axe', True), 45: ('diamond_axe', True), 52: ('netherite_axe', True),
     46: ('bow', True), 47: ('bow', True),
     48: ('enchanted_book', False), 62: ('enchanted_book', False),
+    5: ('golden_apple', False),   # first aid spray -> golden apple (it still heals fully, in both games)
+    53: ('firework_rocket', True), 54: ('crossbow_standby', True),   # rocket launcher, mine thrower
+    34: ('spyglass', True), 68: ('spyglass', True), 69: ('spyglass', True), 170: ('spyglass', True),   # scopes
     0: ('arrow', True),   # the shared ammo model (every ammo type uses model 0 with its own texture)
     6: ('cooked_beef', False),    # herbs (green/red/yellow share model 6) -> steak
     18: ('cooked_beef', False),   # mixed herbs (share model 18)

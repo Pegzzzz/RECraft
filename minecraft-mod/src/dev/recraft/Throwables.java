@@ -32,7 +32,7 @@ import net.minecraft.world.phys.Vec3;
  *  - Ender pearl (flash grenade): throws you up to 24 blocks where you look, stopping at RE4's walls.
  *  - Fire charge (incendiary grenade): set the first RE4 enemy in your sights on fire.
  *  - Axe: one swing every AxeCooldownSec seconds (RECraft.ini); RE4 makes that swing hit much harder.
- * RE4's rooms collide through SkyCraft's additions to block collisions, so every ray here is marched with
+ * RE4's rooms collide through the core's additions to block collisions, so every ray here is marched with
  * collision boxes rather than vanilla's raycast (which doesn't see them).
  */
 final class Throwables {

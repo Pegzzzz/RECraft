@@ -2,8 +2,7 @@
 
 **Minecraft, inside Resident Evil 4.** You play Resident Evil 4 (2005, Ultimate HD Edition on Steam)
 as a Minecraft player: Minecraft runs hidden next to the game and drives Leon — movement, inventory,
-combat, building — while RE4 draws everything. Built on the idea and protocol of
-[SkyCraft](https://github.com/chasmlol/SkyCraft) (Minecraft inside Skyrim), with RE4 in Skyrim's place.
+combat, building — while RE4 draws everything. One jar on the Minecraft side, one DLL on the RE4 side.
 
 > Fan project. Not affiliated with Capcom, Mojang or Microsoft. No game files or assets are included:
 > you need your own copies of both games.
@@ -30,6 +29,9 @@ combat, building — while RE4 draws everything. Built on the idea and protocol 
 - **RE4's scenery reacts.** Shut doors block you, padlocks break, and the things RE4 makes you shoot
   (spinels and other hanging treasure, blue medallions, lamps, boarded passages, bear traps and tripwire bombs) take
   your arrows and swings.
+- **Del Lago with Minecraft spears.** In the lake boat Leon's harpoons are Minecraft spears; the fight plays with
+  RE4's own boat controls (see Controls) and RE4's life meter.
+- **Pushable cabinets.** Hold F against a cabinet RE4 lets you push; it is solid in Minecraft too.
 - **RE4 still plays out.** Cutscenes, doors, ladders, vaults and grabs run as RE4 made them, with your
   Minecraft character in Leon's place; Minecraft picks Leon up when they end.
 - **RE4's merchant decides your Minecraft gear.** Buy and tune up weapons in RE4's own shop and your
@@ -46,7 +48,8 @@ combat, building — while RE4 draws everything. Built on the idea and protocol 
 
   In RE4's case and shop these items carry their Minecraft names and descriptions (English or French,
   following the game's language), and with the optional item models (see [tools/](tools/)) they look like
-  Minecraft items too.
+  Minecraft items too. The merchant's attache cases show as Minecraft chestplates and his treasure map as a
+  Minecraft map.
 
   Ammo Leon picks up turns into arrows, crates and barrels you break give planks, and herbs become
   steak (one per herb) - food is how you heal, so hunger is part of the fight. Merchant gear doesn't wear
@@ -58,24 +61,32 @@ combat, building — while RE4 draws everything. Built on the idea and protocol 
 |---|---|
 | Resident Evil 4 UHD (Steam, v1.1.0) | with [re4_tweaks](https://github.com/nipkownix/re4_tweaks) installed |
 | Minecraft Java 26.3 | via [Prism Launcher](https://prismlauncher.org/), Fabric Loader 0.19.5+, Fabric API |
-| [SkyCraft](https://github.com/chasmlol/SkyCraft) 0.1.2 | the Minecraft-side link this builds on |
 
 ## Install
 
 Step by step: **[INSTALL.md](INSTALL.md)**. In short: `winmm.dll` from the [release](../../releases) goes in
-`Resident Evil 4\Bin32\`; `RECraft-1.13.0.jar` goes in a Prism Minecraft 26.3 Fabric instance with Fabric API and
-SkyCraft; `tools\build_rooms.ps1` builds the room collision from your own game files. Start RE4, then Minecraft.
+`Resident Evil 4\Bin32\`; `RECraft-1.14.0.jar` goes in a Prism Minecraft 26.3 Fabric instance with Fabric API;
+`tools\build_rooms.ps1` builds the room collision from your own game files. Start RE4, then Minecraft.
 
 ## Controls
 
 | Key | |
 |---|---|
-| Minecraft's keys | everything (move, jump, sneak, attack, use, inventory, hotbar) |
-| **F** | RE4's action button: doors, windows, ladders, items, the merchant. Press F twice quickly at a door to kick it open |
+| Minecraft's keys | everything: move (WASD), jump (Space), sneak (Shift), attack (left click), use / place / eat / draw the bow (right click), inventory (E), hotbar (1-9, wheel), drop (Q) |
+| **F** | RE4's action button: doors, windows, ladders, items, the merchant, typewriters, cutscene button prompts |
+| **F, F** (twice quickly) | at a door: kick it open |
+| **hold F** | against a cabinet RE4 lets you push: push it |
 | **Esc** | RE4: skip a cutscene, pause menu |
 | **O** | Minecraft's pause / options menu |
-| **F6** | hand Leon to RE4 (or back to Minecraft) by hand |
+| **F6** | hand Leon to RE4's own controls, and back to Minecraft |
 | `/recraft reset` | (Minecraft chat) empty the inventory (e.g. for a new RE4 game); gear comes back from Leon's case |
+
+**In the lake boat (Del Lago)** RE4 plays with its own controls: **W / S** speed, **A / D** steer, **hold the right
+mouse button** to raise a harpoon, **left click** to throw it, **F** to act.
+
+> **Some parts may still need F6.** Not every RE4 scene has been played through with Minecraft in charge. If Leon
+> gets stuck, an RE4 move or button prompt doesn't respond, or the camera is wrong, press **F6** to play that bit
+> with RE4's own controls (RE4's keyboard and mouse layout), then **F6** again to hand Leon back to Minecraft.
 
 ## Settings
 
@@ -100,14 +111,16 @@ evens out 60 fps on a 120 Hz screen, `LowLatency` keeps one frame queued.
 
 `winmm.dll` is loaded by RE4. It finds RE4's structures by byte patterns (layouts from re4_tweaks' SDK and
 the [RE4 GameCube decompilation](https://github.com/emoose/re4)), hooks RE4's camera, Direct3D 9 and
-DirectInput, and talks to Minecraft through SkyCraft's shared-memory protocol (`Local\SkyCraft_v1`).
-RECraft's Minecraft mod adds health sync, blocks and item rules through a free block of that memory.
+DirectInput, and talks to RECraft's Minecraft mod through shared memory (`Local\RECraft_v1`): the mod streams
+Minecraft's player, camera, HUD and world entities to RE4, and RE4's rooms, enemies, health and attache case back.
 
 ## Credits
 
-- [SkyCraft](https://github.com/chasmlol/SkyCraft) by chasmlol (MIT) — the protocol and Minecraft side this builds on.
 - [MinHook](https://github.com/TsudaKageyu/minhook) by Tsuda Kageyu (BSD 2-Clause).
 - [re4_tweaks](https://github.com/nipkownix/re4_tweaks) and the [RE4 decompilation](https://github.com/emoose/re4) — for documenting RE4's internals.
-- JADERLINK's RE4 tools — for extracting room collision.
+- JADERLINK's RE4 tools — for extracting room collision and models.
 
 See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). RECraft itself is MIT licensed.
+
+**Shoutout to [SkyCraft](https://github.com/chasmlol/SkyCraft) by chasmlol** — Minecraft inside Skyrim, the idea
+RECraft started from. RECraft's Minecraft link is a modified copy of SkyCraft's Fabric mod (MIT).

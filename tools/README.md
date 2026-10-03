@@ -17,7 +17,8 @@ triangles (9 floats each, the tool's units: x100 = RE4 units).
 
 # Minecraft item models in the attache case and the merchant (optional)
 
-RECraft can show the weapons it maps as Minecraft items (swords, axes, bow, enchanted book, arrows) in
+RECraft can show the items it maps as Minecraft items (swords, axes, bow, crossbow, enchanted book, arrows, golden
+apple, firework rocket, spyglass) in
 RE4's attache case and shop. The models are generated from **your own** RE4 files and **your own**
 Minecraft jar; nothing of either is distributed here.
 
@@ -37,6 +38,27 @@ Item names and descriptions are changed by the DLL at run time (`dll/names.cpp`)
 
 The three grenades share one model in the case, so each becomes a flat Minecraft item card (TNT shown as
 its little block icon, the fire charge, the ender pearl) cut out with an opacity map.
+
+# Merchant pictures: attache cases and the treasure map (optional)
+
+The merchant shows the attache cases and treasure maps as flat pictures from the shop's image pack, not models.
+`build_shop_icons.py` redraws them from your Minecraft jar: case M = leather chestplate, L = iron chestplate,
+XL = diamond chestplate (the armour each case gives you), treasure map = Minecraft map.
+
+1. Decompress `BIO4\ImagePackHD\3c00000N.pack.lfs` (English `3c000001`, French `3c000002`).
+2. `PACK_TOOL=…/RE4_UHD_PACK_TOOL.exe python3 build_shop_icons.py <minecraft-26.x-client.jar> 3c000001.pack out`
+3. Rename the `.lfs` out of the way and put `out/3c000001.pack` in `BIO4\ImagePackHD\`.
+
+# Del Lago: Minecraft spears for harpoons (optional)
+
+`build_harpoon.py` turns the harpoon Leon throws from the boat into a Minecraft iron spear (from your jar), the
+harpoon's length and pointing the same way. It adds the spear's texture to the boat's image packs and replaces the
+harpoon model in `Em\pl0f.udas`.
+
+1. Decompress `BIO4\Em\pl0f.udas.lfs`, `BIO4\ImagePackHD\0100000f.pack.yz2.lfs` and `BIO4\ImagePack\0100000f.pack.yz2.lfs`.
+2. `BIN_TOOL=… PACK_TOOL=… UDAS_TOOL=…/JADERLINK_DATUDAS_TOOL.exe python3 build_harpoon.py <minecraft-26.x-client.jar>
+   pl0f.udas <HD 0100000f.pack.yz2> <SD 0100000f.pack.yz2> out`
+3. Rename the three `.lfs` files out of the way and copy `out/Em`, `out/ImagePackHD`, `out/ImagePack` into `BIO4`.
 
 # Minecraft items lying in the world (optional)
 

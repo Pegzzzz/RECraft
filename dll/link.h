@@ -1,4 +1,4 @@
-// link.h - shared declarations for the RE4 side of the SkyCraft-style Minecraft link.
+// link.h - shared declarations for the RE4 side of the RECraft Minecraft link.
 #pragma once
 #include <windows.h>
 #include <cstdint>
@@ -9,7 +9,7 @@ namespace bridge {
 
 constexpr double kUnitsPerBlock = 1000.0;   // RE4 units (~mm) per Minecraft block
 
-// SkyCraft protocol enums used on our side
+// link protocol enums used on our side
 enum : uint16_t { kInKey = 1, kInMouseButton = 2, kInScroll = 3, kInCursor = 4, kInText = 5, kInReleaseAll = 6, kInOpenMenu = 8 };
 enum : uint32_t { kMcInWorld = 1, kMcScreenOpen = 2, kMcOnGround = 4, kMcSneaking = 8, kMcDead = 32 };
 

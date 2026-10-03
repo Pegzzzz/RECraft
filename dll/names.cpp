@@ -42,7 +42,7 @@ static std::vector<uint16_t> Enc(const char* utf8) {
 }
 
 struct Entry { uint16_t id; const char* en; const char* fr; int desc; };
-// desc: 0 none (keep RE4's), 1 sword, 2 axe, 3 bow, 4 protection
+// desc: 0 none (keep RE4's), 1 sword, 2 axe, 3 bow, 4 protection, 5 golden apple, 6-8 armour cases
 static const Entry kEntries[] = {
     {35, "Wooden Sword", "\xC3\x89p\xC3\xA9" "e en bois", 1},
     {33, "Stone Sword", "\xC3\x89p\xC3\xA9" "e en pierre", 1}, {64, "Stone Sword", "\xC3\x89p\xC3\xA9" "e en pierre", 1},
@@ -55,8 +55,12 @@ static const Entry kEntries[] = {
     {46, "Bow (Power I)", "Arc (Puissance I)", 3}, {107, "Bow (Power I)", "Arc (Puissance I)", 3},
     {47, "Bow (Power II)", "Arc (Puissance II)", 3}, {108, "Bow (Power II)", "Arc (Puissance II)", 3}, {81, "Bow (Power II)", "Arc (Puissance II)", 3},
     {48, "Protection Book", "Livre de Protection", 4}, {50, "Protection Book", "Livre de Protection", 4}, {62, "Protection Book", "Livre de Protection", 4},
-    {125, "Leather Armour (M)", "Armure de cuir (M)", 0}, {126, "Iron Armour (L)", "Armure de fer (L)", 0},
-    {127, "Diamond Armour (XL)", "Armure diamant (XL)", 0},
+    {125, "Leather Armour (M)", "Armure de cuir (M)", 6}, {126, "Iron Armour (L)", "Armure de fer (L)", 7},
+    {127, "Diamond Armour (XL)", "Armure diamant (XL)", 8},
+    {5, "Golden Apple", "Pomme dor\xC3\xA9" "e", 5},
+    {53, "Firework Rocket", "Fus\xC3\xA9" "e d'artifice", 0}, {54, "Crossbow", "Arbal\xC3\xA8" "te", 0},
+    {34, "Spyglass", "Longue-vue", 0}, {68, "Spyglass", "Longue-vue", 0}, {69, "Spyglass", "Longue-vue", 0},
+    {170, "Spyglass", "Longue-vue", 0},
     {4, "Arrows", "Fl\xC3\xA8" "ches", 0}, {24, "Arrows", "Fl\xC3\xA8" "ches", 0}, {7, "Arrows", "Fl\xC3\xA8" "ches", 0},
     {0, "Arrows", "Fl\xC3\xA8" "ches", 0}, {26, "Arrows", "Fl\xC3\xA8" "ches", 0}, {32, "Arrows", "Fl\xC3\xA8" "ches", 0},
     {106, "Arrows", "Fl\xC3\xA8" "ches", 0},
@@ -69,16 +73,24 @@ static const Entry kEntries[] = {
     // pesetas lying around are emeralds
     {0x78, "Emeralds", "\xC3\x89meraudes", 0}, {0x79, "Emeralds", "\xC3\x89meraudes", 0},
 };
-static const char* kDescEn[5] = {"",
+static const char* kDescEn[9] = {"",
     "Your Minecraft sword and bow. Tune-ups add\nSharpness, Power, Punch, Flame and more.",
     "Your Minecraft axe. Tune-ups add Sharpness,\nFire Aspect and Knockback.",
     "Your Minecraft bow. Tune-ups add Power,\nPunch, Flame and Infinity.",
-    "Puts Protection on your Minecraft armour.\nFirepower tune-ups raise it."};
-static const char* kDescFr[5] = {"",
+    "Puts Protection on your Minecraft armour.\nFirepower tune-ups raise it.",
+    "Heals you completely, in both games.",
+    "Leather armour for you in Minecraft,\nand a bigger attache case.",
+    "Iron armour for you in Minecraft,\nand a bigger attache case.",
+    "Diamond armour for you in Minecraft,\nand the biggest attache case."};
+static const char* kDescFr[9] = {"",
     "Votre \xC3\xA9p\xC3\xA9" "e et votre arc Minecraft. Les am\xC3\xA9liorations\ndonnent Tranchant, Puissance, Frappe, Flamme...",
     "Votre hache Minecraft. Les am\xC3\xA9liorations donnent\nTranchant, Aura de feu et Recul.",
     "Votre arc Minecraft. Les am\xC3\xA9liorations donnent\nPuissance, Frappe, Flamme et Infinit\xC3\xA9.",
-    "Met Protection sur votre armure Minecraft.\nLa puissance de feu l'augmente."};
+    "Met Protection sur votre armure Minecraft.\nLa puissance de feu l'augmente.",
+    "Vous soigne compl\xC3\xA8" "tement, dans les deux jeux.",
+    "Une armure de cuir pour vous dans Minecraft,\net une mallette plus grande.",
+    "Une armure de fer pour vous dans Minecraft,\net une mallette plus grande.",
+    "Une armure en diamant dans Minecraft,\net la plus grande mallette."};
 
 static const uint32_t kCount = 272, kOfs0 = 8 + 4 * 272;
 static uint8_t* g_buf = nullptr; static size_t g_used = 0;

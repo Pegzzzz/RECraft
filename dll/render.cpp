@@ -75,6 +75,7 @@ static bool g_menuOpen = false;
 static bool g_leonNeeded = false;   // RE4 moves Leon and no Minecraft body can stand in: keep him visible
 static bool g_leonAction = false;   // RE4 is moving Leon itself (event, door, ladder, hit, grab, death)
 static bool g_avatarOn = false;     // the Minecraft body is standing in for Leon this frame
+static bool g_boat = false;          // Leon is in the lake boat (Del Lago): RE4's controls, RE4's life meter
 static uint32_t g_stopFlags = 0;    // GLOBAL_WK +0x170: what RE4 has halted (bit per system; ~all set = a full-screen menu)
 uint8_t* g_idSys = nullptr;         // IDSystem (re4_tweaks' IdSys): the HUD pieces, set by RECraft.cpp
 // RE4's own HUD while Minecraft is the player: the life meter (IDC_LIFE_METER 0x21) and the ammo icon
@@ -332,6 +333,12 @@ static bool GameBusy(const bridge::Leon& leon) {
     // Anything but plain standing / walking / turning / falling counts (the PC version's numbers for
     // some moves - kicking a ladder down, freeing the dog - differ from the GameCube decompilation).
     bool locomotion = r0 == 0 && (r1 <= 5 || r1 == 14 || r1 == 17 || r1 == 19);
+    {   // the lake boat (Del Lago): RE4 plays it with its own controls, so RE4's own life meter shows meanwhile
+        bool boat = leon.valid && r0 == 0 && r1 == 15;
+        if (boat != g_boat) BridgeLog("boat: %s", boat ? "Leon is in the boat - RE4's controls: W/S speed, A/D steer, hold the right mouse "
+                                                  "button to raise a harpoon (a spear), left click to throw, F to act" : "off the boat");
+        g_boat = boat;
+    }
     bool known = r0 == 1 || r0 == 5 || (r0 == 0 && (r1 == 7 || r1 == 8 || r1 == 9 || r1 == 10 || r1 == 12 || r1 == 15 || r1 == 16));
     static int otherFrames = 0;
     otherFrames = (!locomotion && !known && r0 != 2) ? otherFrames + 1 : 0;
@@ -794,7 +801,7 @@ static HRESULT WINAPI PresentHook(IDirect3DDevice9* dev, const RECT* a, const RE
     // Leon's death: Minecraft's world and body only while the body plays the death - not over "You are dead" (0.33 drew
     // the blocks on top of the red screen)
     if (!g_menuOpen || (g_dieDemo && g_avatarOn)) { LARGE_INTEGER b0, b1; QueryPerformanceCounter(&b0); blocks::Draw(dev, bridge::McAlive()); QueryPerformanceCounter(&b1); g_blkTicks += b1.QuadPart - b0.QuadPart; }
-    Re4HudTick(S.everPuppet && bridge::McAlive() && !input::g_re4Control);
+    Re4HudTick(S.everPuppet && bridge::McAlive() && !input::g_re4Control && !g_boat);
     // the radio (Hunnigan's video call): the Minecraft player's face in Leon's "out going image" panel
     if (g_menuOpen && (g_subType & 0x20) && S.everPuppet && !input::g_re4Control) blocks::DrawPortrait(dev, 0.699f, 0.148f, 0.921f, 0.619f);
     UploadOverlay(dev);

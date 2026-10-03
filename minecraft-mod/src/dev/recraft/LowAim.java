@@ -10,7 +10,7 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * RE4's floors are SkyCraft collision that Minecraft's crosshair also picks, so aiming at an enemy's legs (or
+ * RE4's floors are the link's collision that Minecraft's crosshair also picks, so aiming at an enemy's legs (or
  * a padlock low on a door) used to land on the ground just in front of them. When the attack key is pressed
  * and the crosshair isn't on an entity, an RE4 stand-in that the aim passes through (or within a few
  * centimetres of) becomes the target, as long as it's no further than the ground the crosshair hit.

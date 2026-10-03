@@ -1,6 +1,6 @@
-// combat.cpp - RE4 enemies inside Minecraft (SkyCraft's actor proxies) and hits in both directions.
+// combat.cpp - RE4 enemies inside Minecraft (the mod's actor stand-ins) and hits in both directions.
 //
-// * Every RE4 enemy near Leon is published in the actor table; SkyCraft's Minecraft mod mirrors each
+// * Every RE4 enemy near Leon is published in the actor table; RECraft's Minecraft mod mirrors each
 //   as an invisible, hittable proxy. Minecraft's own combat (attack cooldown, crits, sweeping,
 //   enchantments, bows, tridents...) then works on them.
 // * Minecraft's hits come back as events: the damage is applied to the RE4 enemy, which is put into
@@ -260,6 +260,38 @@ static void DoorTick(uint8_t* e, uint32_t i, const float plp[3], uint8_t* view, 
     }
 }
 
+// Pushable cabinets / shelves (cEmRack, decompilation id 0x45 -> PC 0x55; pl_push.cpp): RE4 keeps them out of the
+// room collision (they move), so Minecraft walked through them. Their collision rectangle (cModel atari +0x2B4:
+// offset, half sizes along local X / Z, half height) goes to Minecraft like a door panel - four upright faces,
+// sent again as RE4 slides it. Not while Leon stands inside it (he'd be stuck).
+static void RackTick(uint8_t* e, const float plp[3], std::vector<float>& tris) {
+    float rp[3]; memcpy(rp, e + off::pos, 12);
+    float dx = rp[0] - plp[0], dz = rp[2] - plp[2];
+    if (dx * dx + dz * dz > 30000.f * 30000.f || Rd<int16_t>(e, off::hp) <= 0) return;
+    float ofs[3]; memcpy(ofs, e + 0x2B4, 12);
+    float rx = Rd<float>(e, 0x2B4 + 0xC), rz = Rd<float>(e, 0x2B4 + 0x10), hh = Rd<float>(e, 0x2B4 + 0x14);
+    if (!(rx > 100.f && rx < 3000.f && rz > 100.f && rz < 3000.f)) return;
+    if (!(hh > 200.f && hh < 3000.f)) hh = 1000.f;
+    float y0 = ofs[1] - hh < 0.f ? 0.f : ofs[1] - hh, y1 = ofs[1] + hh < 1200.f ? 1200.f : ofs[1] + hh;
+    float c[8][3];
+    for (int k = 0; k < 8; k++) {
+        float l[3] = {ofs[0] + ((k & 1) ? rx : -rx), (k & 2) ? y1 : y0, ofs[2] + ((k & 4) ? rz : -rz)};
+        MulPt(e, l, c[k]);
+    }
+    {   // Leon inside (or right in it): leave it out this time
+        float lx = plp[0] - rp[0], lz = plp[2] - rp[2];
+        float ax[2] = {c[1][0] - c[0][0], c[1][2] - c[0][2]}, az[2] = {c[4][0] - c[0][0], c[4][2] - c[0][2]};
+        float la = sqrtf(ax[0] * ax[0] + ax[1] * ax[1]), lb = sqrtf(az[0] * az[0] + az[1] * az[1]);
+        float cx = (c[0][0] + c[5][0]) * 0.5f - rp[0], cz = (c[0][2] + c[5][2]) * 0.5f - rp[2];
+        float u = ((lx - cx) * ax[0] + (lz - cz) * ax[1]) / (la > 1 ? la : 1), v = ((lx - cx) * az[0] + (lz - cz) * az[1]) / (lb > 1 ? lb : 1);
+        if (fabsf(u) < la * 0.5f + 150.f && fabsf(v) < lb * 0.5f + 150.f) return;
+    }
+    static const int f[8][3] = {{0,1,3},{0,3,2},{4,6,7},{4,7,5},{0,2,6},{0,6,4},{1,5,7},{1,7,3}};
+    for (auto& t : f) for (int k = 0; k < 3; k++) tris.insert(tris.end(), c[t[k]], c[t[k]] + 3);
+    static int said = 0;
+    if (said++ < 3) BridgeLog("push: cabinet %.0fx%.0f mm at (%.0f %.0f %.0f) sent to Minecraft as a wall", 2 * rx, 2 * rz, rp[0], rp[1], rp[2]);
+}
+
 static uint8_t* AimedPart(uint8_t* e, float* outRad) {
     uint8_t* first = e + 0x344;
     auto& S = bridge::S();
@@ -323,7 +355,7 @@ static void RegisterHit(uint8_t* e, int type, const float from[3], float distSq,
 }
 
 // ------------------------------------------------------------------ RECraft's Minecraft side (RECraft-link mod)
-// Lives in a free block of SkyCraft's link memory (0x1B200): the player's health (every tick), the
+// Lives in a free block of the link memory (0x1B200): the player's health (every tick), the
 // health RE4 asks for, and the solid blocks around the player.
 namespace mcx {
     const uint32_t kBase = 0x1B200, kMagic = 0x58433452;
@@ -608,6 +640,7 @@ void Tick(uint8_t* view, bool puppet) {
             if (!(Rd<uint32_t>(e, off::be_flag) & 0x601)) continue;
             int id = Rd<uint8_t>(e, off::id);
             if (id == kDoorId) { if (blk >= (uint32_t)g_doorWk + 0x430) DoorTick(e, i, plp, view, n, doorTris); continue; }
+            if (id == 0x55) { if (cfg::doorCollision) RackTick(e, plp, doorTris); continue; }   // pushable cabinet
             bool breakable = IsBreakable(id);
             if (!IsEnemy(id) && !breakable) continue;
             float p[3], a[3]; memcpy(p, e + off::pos, 12); memcpy(a, e + off::ang, 12);
@@ -721,7 +754,7 @@ void Tick(uint8_t* view, bool puppet) {
             bool busy = pd.em == e && pd.frames > 0;
             int16_t hp = busy ? pd.target : Rd<int16_t>(e, off::hp);
             if (hp <= 0 || Rd<uint8_t>(e, off::r_no) == 3) continue;
-            bool axe = ev.weapon == 2 && !(ev.flags & 2);   // SkyCraft WEAPON_AXE: RECraft's heavy weapon (one swing per cooldown)
+            bool axe = ev.weapon == 2 && !(ev.flags & 2);   // link WEAPON_AXE: RECraft's heavy weapon (one swing per cooldown)
             int dmg = (int)lroundf(ev.a * cfg::damageScale * (axe ? cfg::axeDamage : 1.0f));
             if (dmg < 1) dmg = 1;
             int nhp = hp - dmg;
@@ -867,7 +900,7 @@ void Tick(uint8_t* view, bool puppet) {
     } else if (cfg::linkHealth) {
         // Minecraft can't be told its health, only hurt. So the Minecraft player's health is made
         // known once: on the first link it's knocked out (keepInventory + instant respawn are on in
-        // SkyCraft's world, nothing is lost) and comes back at a full 20; after any respawn it's then
+        // the Minecraft world, nothing is lost) and comes back at a full 20; after any respawn it's then
         // brought down to Leon's share.
         static ULONGLONG readySince = 0;
         if (!ready) readySince = 0; else if (!readySince) readySince = now;

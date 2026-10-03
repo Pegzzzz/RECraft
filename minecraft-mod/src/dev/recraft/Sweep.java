@@ -18,7 +18,7 @@ import net.minecraft.world.phys.AABB;
 /**
  * A Minecraft-style sweep that reaches RE4's crowds: a fully charged sword swing also cuts every RE4
  * enemy (and crate) in a wide arc in front of you, not only the ones touching your target. The sweep
- * hits go through SkyCraft's stand-ins like any other hit, so RE4 reacts to each one.
+ * hits go through the core's stand-ins like any other hit, so RE4 reacts to each one.
  * Damage: 40% of the sword's attack, up to 85% with Sweeping Edge III.
  */
 final class Sweep {
@@ -59,6 +59,6 @@ final class Sweep {
 	}
 
 	static boolean isStandIn(Entity e) {
-		return e instanceof LivingEntity && e.getClass().getName().equals("dev.skycraft.combat.SkyrimActorEntity");
+		return e instanceof LivingEntity && e.getClass().getName().equals("dev.recraft.core.combat.Re4ActorEntity");
 	}
 }

@@ -27,8 +27,8 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
- * RECraft's Minecraft side (Resident Evil 4 x Minecraft), next to SkyCraft. It shares SkyCraft's link memory (a free block at
- * 0x1B200, between SkyCraft's event ring and its entity table):
+ * RECraft's Minecraft side (Resident Evil 4 x Minecraft), next to the core link (dev.recraft.core). It shares the link memory (a free block at
+ * 0x1B200, between the core's event ring and its entity table):
  *  - one shared health: reports the player's health every tick and applies the health RE4 asks for,
  *  - RE4's merchant decides the gear: Leon's attache case (weapons, tune-ups, case size) maps to Minecraft
  *    swords, axes, bow, armour and enchantments (see Gear); ammo Leon picks up becomes arrows, crates you
@@ -70,11 +70,11 @@ public final class RecraftLink implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		try {
-			Class<?> link = Class.forName("dev.skycraft.link.SkyLink");
+			Class<?> link = Class.forName("dev.recraft.core.link.CoreLink");
 			this.shmField = link.getDeclaredField("shm");
 			this.shmField.setAccessible(true);
 		} catch (Throwable t) {
-			System.out.println("[RECraft] SkyCraft's link not found - RECraft's Minecraft side is off: " + t);
+			System.out.println("[RECraft] core link not found - RECraft's Minecraft side is off: " + t);
 			return;
 		}
 		ServerTickEvents.END_SERVER_TICK.register(this::tick);
@@ -177,7 +177,7 @@ public final class RecraftLink implements ModInitializer {
 			// ---- the hittable stand-ins for RE4's enemies and breakables don't stop you placing blocks
 			if (this.ticks % 20 == 0) {
 				for (net.minecraft.world.entity.Entity e : level.getAllEntities()) {
-					if (e.getClass().getName().equals("dev.skycraft.combat.SkyrimActorEntity")) {
+					if (e.getClass().getName().equals("dev.recraft.core.combat.Re4ActorEntity")) {
 						e.blocksBuilding = false;
 					}
 				}

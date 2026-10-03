@@ -1,6 +1,6 @@
 #include <algorithm>
 // blocks.cpp - draws Minecraft's world (placed blocks, dropped items, mobs, arrows, particles) inside
-// RE4's frame. SkyCraft's Minecraft mod streams its own block meshes, atlas and entity geometry
+// RE4's frame. RECraft's Minecraft mod streams its own block meshes, atlas and entity geometry
 // through the render ring; we draw them with RE4's camera matrices, depth-tested against RE4's
 // depth buffer so RE4's walls hide blocks behind them.
 // Runs on RE4's render thread (Present hook).
@@ -40,7 +40,7 @@ struct Section { std::vector<Vtx> solid, translucent; };
 static std::map<int64_t, Section> g_sections;
 struct Batch { uint32_t tex, first, count; bool translucent; };
 static std::vector<Vtx> g_sceneV; static std::vector<Batch> g_sceneB;
-// The Minecraft player's body (SkyCraft's ragdoll message: standing, facing +Z, feet at the origin,
+// The Minecraft player's body (the mod's ragdoll message: standing, facing +Z, feet at the origin,
 // in Minecraft's six parts) - drawn where Leon is during cutscenes.
 struct AvBatch { uint32_t tex, first, count; int part; bool translucent; };
 static std::vector<Vtx> g_avV; static std::vector<AvBatch> g_avB;
@@ -145,7 +145,7 @@ static void Convert(const RenVertex* v, uint32_t n, double ox, double oy, double
 // Drain the render ring (called each frame before drawing).
 static void Drain() {
     if (!g_ring) {
-        HANDLE map = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, L"Local\\SkyCraft_v1");
+        HANDLE map = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, L"Local\\RECraft_v1");
         if (!map) return;
         SYSTEM_INFO si; GetSystemInfo(&si);
         uint64_t aligned = kOffRender & ~(uint64_t)(si.dwAllocationGranularity - 1), lead = kOffRender - aligned;
@@ -259,7 +259,7 @@ static void Drain() {
     *tail = t;
 }
 
-// ------------------------------------------------------------------ world entities (SkyCraft's table @0x1C000)
+// ------------------------------------------------------------------ world entities (the mod's table @0x1C000)
 // Minecraft leaves some things out of the scene mesh for the game to draw itself: the outline of the targeted
 // block (or where a held block would go), the cracks on a block being broken, dropped items and blocks (what a
 // broken block drops), arrows, and thrown items (ender pearls, fire charges). 0.31 and earlier never read this
@@ -297,7 +297,7 @@ static void WQuad(std::vector<Vtx>& o, const float c[4][3], const float* uv, uin
     static const int ix[6] = {0, 1, 2, 0, 2, 3};
     for (int k : ix) o.push_back({c[k][0] * 1000.f, c[k][1] * 1000.f, c[k][2] * 1000.f, col, u[k], w[k]});
 }
-static uint32_t Tinted(uint32_t base, uint32_t rgba) {   // SkyCraft's tint is RGBA8 (r in the low byte); 0 = none
+static uint32_t Tinted(uint32_t base, uint32_t rgba) {   // the mod's tint is RGBA8 (r in the low byte); 0 = none
     if (!rgba) return base;
     uint32_t r = ((base >> 16) & 0xFF) * (rgba & 0xFF) / 255, g = ((base >> 8) & 0xFF) * ((rgba >> 8) & 0xFF) / 255, b = (base & 0xFF) * ((rgba >> 16) & 0xFF) / 255;
     return (base & 0xFF000000) | (r << 16) | (g << 8) | b;
