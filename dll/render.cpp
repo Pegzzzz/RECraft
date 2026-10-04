@@ -76,6 +76,8 @@ static bool g_leonNeeded = false;   // RE4 moves Leon and no Minecraft body can 
 static bool g_leonAction = false;   // RE4 is moving Leon itself (event, door, ladder, hit, grab, death)
 static bool g_avatarOn = false;     // the Minecraft body is standing in for Leon this frame
 static bool g_boat = false;          // Leon is in the lake boat (Del Lago): RE4's controls, RE4's life meter
+static bool g_scripted = false;      // a story movie, or Leon hit / grabbed / in a scripted event (QTEs): RE4's own show
+static bool g_sceneClean = false;    // this frame nothing of Minecraft's is drawn over RE4's picture
 static uint32_t g_stopFlags = 0;    // GLOBAL_WK +0x170: what RE4 has halted (bit per system; ~all set = a full-screen menu)
 uint8_t* g_idSys = nullptr;         // IDSystem (re4_tweaks' IdSys): the HUD pieces, set by RECraft.cpp
 // RE4's own HUD while Minecraft is the player: the life meter (IDC_LIFE_METER 0x21) and the ammo icon
@@ -344,6 +346,7 @@ static bool GameBusy(const bridge::Leon& leon) {
     otherFrames = (!locomotion && !known && r0 != 2) ? otherFrames + 1 : 0;
     bool action = leon.valid && (known || otherFrames >= 3);
     g_leonAction = leon.valid && (action || r0 == 2 || r0 == 4);   // + dying, + grabbed
+    g_scripted = leon.valid && (r0 == 1 || r0 == 4 || r0 == 5 || movie);
     {   // what routines Leon goes through while Minecraft has him (to refine the list)
         static uint16_t seen[64]; static int nSeen = 0;
         uint16_t key = (uint16_t)(r0 << 8 | r1);
@@ -753,32 +756,40 @@ static HRESULT WINAPI PresentHook(IDirect3DDevice9* dev, const RECT* a, const RE
         bool show = false;
         float parts[7][3][4];
         // a cutscene's own Leon that is going away has no skeleton any more: use the real Leon, or nothing
-        if (cfg::avatarInCutscenes && pl && actor && blocks::HaveAvatar())
-            show = PoseFromLeon(evl ? evl : pl, parts) || (evl && PoseFromLeon(pl, parts));
-        // Nothing can stand in (no skeleton to pose, a QTE's own Leon...): RE4's Leon is shown instead of nobody
-        // (0.32 and before hid him anyway - "the character disappears during QTEs").
-        // Close shots belong to RE4's own Leon: his model is made for them, the blocky Minecraft body filled the screen
-        // with black boxes there (grabs, hit reactions, vaults, opening doors, the boulder, cutscene close-ups). The
-        // body stands in for wider shots. Measured from the camera RE4 really draws with to the body's head, with
-        // some hysteresis and at most one switch every 0.3 s so it doesn't flicker; the first frames after RE4
-        // takes Leon (its camera still starts at Minecraft's eye, inside the head) show nobody.
+        bool posed = pl && actor && blocks::HaveAvatar() &&
+                     (PoseFromLeon(evl ? evl : pl, parts) || (evl && PoseFromLeon(pl, parts)));
         static int nearState = 0, holdFrames = 18, actorFrames = 0;
         actorFrames = actor ? actorFrames + 1 : 0;
-        bool nearShot = false;
-        if (show) {
-            float eye[3], nearest = 1e9f, head = 1e9f;
-            if (blocks::CameraEye(eye)) head = blocks::AvatarDistance(parts, eye, &nearest);
-            bool want = nearState ? (head < 2100.f || nearest < 300.f) : (head < 1700.f || nearest < 220.f);
-            if (++holdFrames > 100000) holdFrames = 100000;
-            if (want != (nearState != 0) && (holdFrames >= 18 || (want && nearest < 120.f))) {
-                nearState = want; holdFrames = 0;
-                static int logs = 0;
-                if (logs++ < 40) BridgeLog("avatar: %s shot (camera %.1f m from the head) - %s", want ? "close" : "wide", head / 1000.f, want ? "RE4's Leon" : "Minecraft body");
-            }
-            nearShot = nearState != 0;
-        } else { nearState = 0; holdFrames = 18; }
-        if (nearShot) show = false;
-        bool blank = nearShot && actorFrames < 10 && !evl;
+        float eye[3], nearest = 1e9f, head = 1e9f;
+        if (posed && blocks::CameraEye(eye)) head = blocks::AvatarDistance(parts, eye, &nearest);
+        bool blank = false;
+        if (!cfg::avatarInCutscenes) {
+            // 0.37 default: RE4's own Leon plays every cutscene and RE4 move (the drawn-on-top body covered QTE prompts,
+            // swapped with Leon by camera distance and went missing in close shots). Only while RE4's camera is still
+            // inside him - it starts from Minecraft's eye when RE4 takes Leon over - is he hidden, for those few frames.
+            static bool inside = false;
+            float lim = inside ? 300.f : (actorFrames < 60 ? 220.f : 100.f);
+            bool now = posed && nearest < lim;
+            if (now != inside) { static int logs = 0; if (logs++ < 40) BridgeLog("avatar: camera %s Leon (%.0f mm)", now ? "inside" : "clear of", nearest); inside = now; }
+            blank = now;
+        } else {
+            // MinecraftBodyInCutscenes=1: the Minecraft body stands in for wider shots, RE4's Leon for close shots,
+            // with some hysteresis and at most one switch every 0.3 s; the first frames show nobody.
+            show = posed;
+            bool nearShot = false;
+            if (show) {
+                bool want = nearState ? (head < 2100.f || nearest < 300.f) : (head < 1700.f || nearest < 220.f);
+                if (++holdFrames > 100000) holdFrames = 100000;
+                if (want != (nearState != 0) && (holdFrames >= 18 || (want && nearest < 120.f))) {
+                    nearState = want; holdFrames = 0;
+                    static int logs = 0;
+                    if (logs++ < 40) BridgeLog("avatar: %s shot (camera %.1f m from the head) - %s", want ? "close" : "wide", head / 1000.f, want ? "RE4's Leon" : "Minecraft body");
+                }
+                nearShot = nearState != 0;
+            } else { nearState = 0; holdFrames = 18; }
+            if (nearShot) show = false;
+            blank = nearShot && actorFrames < 10 && !evl;
+        }
         g_leonNeeded = actor && !show && !blank;
         static uint8_t* evlZeroed = nullptr;
         bool standIn = show || blank;
@@ -790,6 +801,11 @@ static HRESULT WINAPI PresentHook(IDirect3DDevice9* dev, const RECT* a, const RE
         if (g_leonNeeded != wasNeeded) { BridgeLog("avatar: %s", g_leonNeeded ? "the Minecraft body can't stand in here - RE4's Leon shown" : "Leon hidden again"); wasNeeded = g_leonNeeded; }
         if (show != was) BridgeLog("avatar: Minecraft body %s", show ? "shown in Leon's place" : "hidden");
         was = show;
+        // RE4's own Leon plays a story cutscene, a grab or a QTE: Minecraft's blocks, items and arrows aren't drawn
+        // either - they're drawn over RE4's finished picture, so they'd cover the characters and the button prompts
+        g_sceneClean = actor && !show && (evl || g_scripted);
+        static bool wasClean = false;
+        if (g_sceneClean != wasClean) { BridgeLog("scene: %s", g_sceneClean ? "RE4's own show - nothing of Minecraft's drawn over it" : "Minecraft's blocks drawn again"); wasClean = g_sceneClean; }
     }
     if (g_presentsSinceHit > 10 && bridge::McAlive()) combat::Tick(bridge::View(), false);   // camera hook idle: keep the hit queue drained
     // (Minecraft's player being dead - it dies with Leon - doesn't bring Leon back: his death plays as the Minecraft body)
@@ -800,7 +816,7 @@ static HRESULT WINAPI PresentHook(IDirect3DDevice9* dev, const RECT* a, const RE
     items::Tick(g_menuOpen);   // Minecraft items on the floor turn slowly (not while RE4 shows one up close)
     // Leon's death: Minecraft's world and body only while the body plays the death - not over "You are dead" (0.33 drew
     // the blocks on top of the red screen)
-    if (!g_menuOpen || (g_dieDemo && g_avatarOn)) { LARGE_INTEGER b0, b1; QueryPerformanceCounter(&b0); blocks::Draw(dev, bridge::McAlive()); QueryPerformanceCounter(&b1); g_blkTicks += b1.QuadPart - b0.QuadPart; }
+    if ((!g_menuOpen && !g_sceneClean) || (g_dieDemo && g_avatarOn)) { LARGE_INTEGER b0, b1; QueryPerformanceCounter(&b0); blocks::Draw(dev, bridge::McAlive()); QueryPerformanceCounter(&b1); g_blkTicks += b1.QuadPart - b0.QuadPart; }
     Re4HudTick(S.everPuppet && bridge::McAlive() && !input::g_re4Control && !g_boat);
     // the radio (Hunnigan's video call): the Minecraft player's face in Leon's "out going image" panel
     if (g_menuOpen && (g_subType & 0x20) && S.everPuppet && !input::g_re4Control) blocks::DrawPortrait(dev, 0.699f, 0.148f, 0.921f, 0.619f);

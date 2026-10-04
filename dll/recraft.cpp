@@ -75,7 +75,7 @@ static bool Readable(const void* p, size_t n) {
 
 // ------------------------------------------------------------------ settings (RECraft.ini)
 namespace cfg {
-bool  hideLeon = true, hideLeonInCutscenes = true, hudInCutscenes = false, hitReactions = false, avatarInCutscenes = true, blocksBehindWalls = true, lowLatency = true, predictMovement = true, evenRefresh = true, mcLowPriority = false, doorCollision = true, overlayHalf = false, vsyncHalfRate = false;
+bool  hideLeon = true, hideLeonInCutscenes = true, hudInCutscenes = false, hitReactions = false, avatarInCutscenes = false, blocksBehindWalls = true, lowLatency = true, predictMovement = true, evenRefresh = true, mcLowPriority = false, doorCollision = true, overlayHalf = false, vsyncHalfRate = false;
 float damageScale = 45.0f, hurtScale = 0.015f;
 bool  linkHealth = true;
 int   staggerCooldownMs = 2500, staggerChance = 10, axeCooldownSec = 20, minEnemyRank = 7;
@@ -94,8 +94,10 @@ static const char kIniDefault[] =
     "MinecraftHudInCutscenes=0\r\n"
     "; Hide Minecraft blocks behind RE4's walls (0 = blocks always drawn on top, like before)\r\n"
     "HideBlocksBehindWalls=1\r\n"
-    "; Show your Minecraft character (your skin) in Leon's place during cutscenes\r\n"
-    "MinecraftBodyInCutscenes=1\r\n"
+    "; Show your Minecraft character (your skin) in Leon's place during cutscenes and RE4's moves (experimental:\r\n"
+    ";   it is drawn over RE4's picture, QTE prompts included). 0 = RE4's own Leon plays them\r\n"
+    "MinecraftBodyInCutscenes=0\r\n"
+    "SceneVersion=1\r\n"
     "; RE4 enemy health removed per point of Minecraft damage (fist 1, diamond sword 7; a Ganado has ~400)\r\n"
     "DamagePerMinecraftPoint=45\r\n"
     "; 1 = one shared health: RE4's health bar is the real one, Minecraft's hearts follow it,\r\n"
@@ -160,13 +162,16 @@ static void LoadConfig() {
         WritePrivateProfileStringA("RECraft", "LinkHealth", "1", ini);
     }
     cfg::linkHealth = I("LinkHealth", 1) != 0;
-    if (I("MinecraftBodyInCutscenes", -1) == -1) WritePrivateProfileStringA("RECraft", "MinecraftBodyInCutscenes", "1", ini);
+    if (I("SceneVersion", 0) < 1) {   // 0.37: RE4's own Leon in cutscenes and RE4's moves by default (the body stand-in
+        // covered QTE prompts, swapped with Leon by camera distance and vanished in close shots)
+        WritePrivateProfileStringA("RECraft", "MinecraftBodyInCutscenes", "0", ini); WritePrivateProfileStringA("RECraft", "SceneVersion", "1", ini);
+    }
     if (I("DoorCollision", -1) == -1) WritePrivateProfileStringA("RECraft", "DoorCollision", "1", ini);
     if (I("MinecraftLowPriority", -1) == -1) WritePrivateProfileStringA("RECraft", "MinecraftLowPriority", "0", ini);
     if (I("EvenRefreshRate", -1) == -1) WritePrivateProfileStringA("RECraft", "EvenRefreshRate", "1", ini);
     if (I("LowLatency", -1) == -1) WritePrivateProfileStringA("RECraft", "LowLatency", "1", ini);
     if (I("PredictMovement", -1) == -1) WritePrivateProfileStringA("RECraft", "PredictMovement", "1", ini);
-    cfg::avatarInCutscenes = I("MinecraftBodyInCutscenes", 1) != 0;
+    cfg::avatarInCutscenes = I("MinecraftBodyInCutscenes", 0) != 0;
     if (I("HideBlocksBehindWalls", -1) == -1) WritePrivateProfileStringA("RECraft", "HideBlocksBehindWalls", "1", ini);
     cfg::blocksBehindWalls = I("HideBlocksBehindWalls", 1) != 0;
     cfg::lowLatency = I("LowLatency", 1) != 0;
@@ -208,8 +213,8 @@ static void LoadConfig() {
     if (cfg::arrowsPerAmmo < 0) cfg::arrowsPerAmmo = 0.5f;
     if (cfg::damageScale <= 0) cfg::damageScale = 45.0f;
     if (cfg::hurtScale < 0) cfg::hurtScale = 0.015f;
-    Log("settings: HideLeon %d, InCutscenes %d, HudInCutscenes %d, damage x%.1f, hurt x%.3f, shared health %d",
-        cfg::hideLeon, cfg::hideLeonInCutscenes, cfg::hudInCutscenes, cfg::damageScale, cfg::hurtScale, cfg::linkHealth);
+    Log("settings: HideLeon %d, InCutscenes %d, HudInCutscenes %d, Minecraft body in scenes %d, damage x%.1f, hurt x%.3f, shared health %d",
+        cfg::hideLeon, cfg::hideLeonInCutscenes, cfg::hudInCutscenes, cfg::avatarInCutscenes, cfg::damageScale, cfg::hurtScale, cfg::linkHealth);
     Log("difficulty: enemies flinch at most every %d ms from hits of %.1f+ (or crits, or %d%% of weaker ones), enemy damage x%.2f, %.2f arrows per round",
         cfg::staggerCooldownMs, cfg::staggerMinDamage, cfg::staggerChance, cfg::enemyDamage, cfg::arrowsPerAmmo);
     Log("difficulty: axe x%.1f every %d s, enemy rank at least %d", cfg::axeDamage, cfg::axeCooldownSec, cfg::minEnemyRank);
@@ -312,7 +317,7 @@ BOOL WINAPI DllMain(HINSTANCE inst, DWORD reason, LPVOID) {
         char* s = strrchr(g_dir, '\\'); if (s) *s = 0;
         char path[MAX_PATH]; snprintf(path, sizeof path, "%s\\RECraft.log", g_dir);
         g_log = fopen(path, "w");
-        Log("RECraft 0.36 loaded (Minecraft drives Leon, room collision, combat, blocks, cutscenes, merchant gear, Minecraft item names)");
+        Log("RECraft 0.37 loaded (Minecraft drives Leon, room collision, combat, blocks, cutscenes, merchant gear, Minecraft item names)");
         CreateThread(nullptr, 0, Worker, nullptr, 0, nullptr);
     }
     return TRUE;

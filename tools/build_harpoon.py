@@ -11,7 +11,7 @@ Needs mono, Pillow and JADERLINK's tools (env BIN_TOOL, PACK_TOOL, UDAS_TOOL). F
 """
 import io, math, os, shutil, sys, zipfile
 from PIL import Image, ImageOps
-from build_item_models import BIN_TOOL, PACK_TOOL, MATERIAL, UUBIN, mono, dds_dxt1
+from build_item_models import BIN_TOOL, PACK_TOOL, MATERIAL, UUBIN, mono, dds_dxt1, pixel_quads, quads_obj
 
 UDAS_TOOL = os.environ.get('UDAS_TOOL', 'JADERLINK_DATUDAS_TOOL.exe')
 SPEAR = 'iron_spear_in_hand'
@@ -31,33 +31,12 @@ def spear_obj(img):
     a0 = min(A(x, y) for x, y in cells); a1 = max(A(x + 1, y + 1) for x, y in cells)
     s = (LENGTH[1] - LENGTH[0]) / (a1 - a0)
     t = s * 0.5
-    V, VT, F = [], [], []
 
     def P(x, y, side):          # sprite point -> model (x: thickness, y: across, z: along, tip at +z)
-        V.append((side, B(x, y) * s, LENGTH[1] - (A(x, y) - a0) * s))
-        return len(V)
-
-    def quad(pts, u, v, n):
-        VT.append((u, v)); ti = len(VT)
-        F.append(([P(*p) for p in pts], ti, n))
-
-    for x, y in cells:
-        u, v = (x + 0.5) / N, 1 - (y + 0.5) / N
-        quad([(x, y + 1, t), (x + 1, y + 1, t), (x + 1, y, t), (x, y, t)], u, v, 0)
-        quad([(x, y + 1, -t), (x, y, -t), (x + 1, y, -t), (x + 1, y + 1, -t)], u, v, 1)
-        if not solid(x - 1, y): quad([(x, y + 1, -t), (x, y + 1, t), (x, y, t), (x, y, -t)], u, v, 2)
-        if not solid(x + 1, y): quad([(x + 1, y + 1, t), (x + 1, y + 1, -t), (x + 1, y, -t), (x + 1, y, t)], u, v, 3)
-        if not solid(x, y - 1): quad([(x, y, t), (x + 1, y, t), (x + 1, y, -t), (x, y, -t)], u, v, 4)
-        if not solid(x, y + 1): quad([(x, y + 1, -t), (x + 1, y + 1, -t), (x + 1, y + 1, t), (x, y + 1, t)], u, v, 5)
+        return (side * t, B(x, y) * s, LENGTH[1] - (A(x, y) - a0) * s)
     d = lambda dx, dy: (0.0, (dx - dy) * r2, -(dx + dy) * r2)   # sprite direction -> model direction
     normals = [(1, 0, 0), (-1, 0, 0), d(-1, 0), d(1, 0), d(0, -1), d(0, 1)]
-    out = ['mtllib item.mtl'] + ['v %.6f %.6f %.6f' % v for v in V] + ['vt %.6f %.6f' % q for q in VT]
-    out += ['vn %.6f %.6f %.6f' % n for n in normals] + ['g MATERIAL_000', 'usemtl MATERIAL_000']
-    for ids, ti, n in F:
-        a, b, c, e = ids
-        out.append('f %d/%d/%d %d/%d/%d %d/%d/%d' % (a, ti, n + 1, b, ti, n + 1, c, ti, n + 1))
-        out.append('f %d/%d/%d %d/%d/%d %d/%d/%d' % (a, ti, n + 1, c, ti, n + 1, e, ti, n + 1))
-    return '\n'.join(out) + '\n'
+    return quads_obj(pixel_quads(solid, N), P, normals)
 
 
 def add_texture(pack_path, work, dds):

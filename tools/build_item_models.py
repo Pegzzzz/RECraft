@@ -203,6 +203,103 @@ def bounds_of(obj_text):
     return lo, hi
 
 
+def pixel_quads(solid, N, tex=128):
+    """Minecraft's held-item look (every opaque pixel a little block), merged into as few quads as possible.
+
+    Front and back are cut into the largest rectangles of opaque pixels, the edges into the longest runs; each quad's
+    texture coordinates span its pixels (the texture holds each pixel as a solid square of tex/N texels, so this
+    looks exactly like one quad per pixel at a fraction of the size - RE4's sub screen has little room to spare).
+    Yields (corners, uvs, face): corners are (x, y, side) in sprite pixels (x right, y down, side +1 front / -1 back),
+    uvs are OBJ (u, v) per corner, face 0 front, 1 back, 2 -x, 3 +x, 4 -y (up), 5 +y (down)."""
+    d = 0.5 * N / tex                                   # half a texel in: no bleeding from the neighbouring pixel
+
+    def uv(x, y):                                       # sprite pixels -> OBJ uv (v bottom-up; the BIN tool flips it)
+        return x / N, 1 - y / N
+
+    def span(a0, a1):
+        return a0 + d, a1 - d
+    used = [[False] * N for _ in range(N)]
+    for y in range(N):
+        for x in range(N):
+            if not solid(x, y) or used[y][x]:
+                continue
+            x1 = x
+            while x1 < N and solid(x1, y) and not used[y][x1]:
+                x1 += 1
+            y1 = y + 1
+            while y1 < N and all(solid(i, y1) and not used[y1][i] for i in range(x, x1)):
+                y1 += 1
+            for j in range(y, y1):
+                for i in range(x, x1):
+                    used[j][i] = True
+            (u0, u1), (v0, v1) = span(x, x1), span(y, y1)
+            yield ([(x, y1, 1), (x1, y1, 1), (x1, y, 1), (x, y, 1)],
+                   [uv(u0, v1), uv(u1, v1), uv(u1, v0), uv(u0, v0)], 0)
+            yield ([(x, y1, -1), (x, y, -1), (x1, y, -1), (x1, y1, -1)],
+                   [uv(u0, v1), uv(u0, v0), uv(u1, v0), uv(u1, v1)], 1)
+    # left / right edges: vertical runs in each column; top / bottom edges: horizontal runs in each row
+    for x in range(N):
+        for face, nx in ((2, x - 1), (3, x + 1)):
+            y = 0
+            while y < N:
+                if not (solid(x, y) and not solid(nx, y)):
+                    y += 1
+                    continue
+                y1 = y
+                while y1 < N and solid(x, y1) and not solid(nx, y1):
+                    y1 += 1
+                u, (v0, v1) = x + 0.5, span(y, y1)
+                if face == 2:
+                    yield ([(x, y1, -1), (x, y1, 1), (x, y, 1), (x, y, -1)],
+                           [uv(u, v1), uv(u, v1), uv(u, v0), uv(u, v0)], 2)
+                else:
+                    yield ([(x + 1, y1, 1), (x + 1, y1, -1), (x + 1, y, -1), (x + 1, y, 1)],
+                           [uv(u, v1), uv(u, v1), uv(u, v0), uv(u, v0)], 3)
+                y = y1
+    for y in range(N):
+        for face, ny in ((4, y - 1), (5, y + 1)):
+            x = 0
+            while x < N:
+                if not (solid(x, y) and not solid(x, ny)):
+                    x += 1
+                    continue
+                x1 = x
+                while x1 < N and solid(x1, y) and not solid(x1, ny):
+                    x1 += 1
+                (u0, u1), v = span(x, x1), y + 0.5
+                if face == 4:
+                    yield ([(x, y, 1), (x1, y, 1), (x1, y, -1), (x, y, -1)],
+                           [uv(u0, v), uv(u1, v), uv(u1, v), uv(u0, v)], 4)
+                else:
+                    yield ([(x, y + 1, -1), (x1, y + 1, -1), (x1, y + 1, 1), (x, y + 1, 1)],
+                           [uv(u0, v), uv(u1, v), uv(u1, v), uv(u0, v)], 5)
+                x = x1
+
+
+def quads_obj(quads, point, normals):
+    """OBJ text for pixel_quads() output; point(x, y, side) -> model (x, y, z). Shared corners are written once."""
+    V, VT, vi, ti, F = [], [], {}, {}, []
+
+    def idx(table, lst, key):
+        if key not in table:
+            lst.append(key)
+            table[key] = len(lst)
+        return table[key]
+    for corners, uvs, n in quads:
+        ids = [idx(vi, V, tuple(round(c, 6) for c in point(*p))) for p in corners]
+        tis = [idx(ti, VT, (round(u, 6), round(v, 6))) for u, v in uvs]
+        F.append((ids, tis, n))
+    out = ['mtllib item.mtl']
+    out += ['v %.6f %.6f %.6f' % v for v in V]
+    out += ['vt %.6f %.6f' % t_ for t_ in VT]
+    out += ['vn %.6f %.6f %.6f' % n for n in normals]
+    out += ['g MATERIAL_000', 'usemtl MATERIAL_000']
+    for ids, tis, n in F:
+        for k in ((0, 1, 2), (0, 2, 3)):
+            out.append('f ' + ' '.join('%d/%d/%d' % (ids[j], tis[j], n + 1) for j in k))
+    return '\n'.join(out) + '\n'
+
+
 def item_obj(img16, rotate, lo, hi):
     px = img16.load()
     solid = lambda x, y: 0 <= x < 16 and 0 <= y < 16 and px[x, y][3] >= 128
@@ -219,43 +316,13 @@ def item_obj(img16, rotate, lo, hi):
     cx, cy = (lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2
     mx, my = (bx0 + bx1) / 2, (by0 + by1) / 2
     t = s * 0.5                                 # half a pixel thick each side
-    V, VT, F = [], [], []
 
-    def P(x, y, z):
-        rx, ry = rot(x, y)
-        V.append(((rx - mx) * sx + cx, (ry - my) * s + cy, z))
-        return len(V)
-
-    def quad(pts, u, v, n):
-        VT.append((u, v))
-        ti = len(VT)
-        ids = [P(*p) for p in pts]
-        F.append((ids, ti, n))
-
-    for y in range(16):
-        for x in range(16):
-            if not solid(x, y):
-                continue
-            u, v = (x + 0.5) / 16, 1 - (y + 0.5) / 16   # OBJ v is bottom-up (the BIN tool flips it)
-            X0, X1, Y0, Y1 = x - 8, x - 7, 8 - (y + 1), 8 - y
-            quad([(X0, Y0, t), (X1, Y0, t), (X1, Y1, t), (X0, Y1, t)], u, v, 0)       # front
-            quad([(X0, Y0, -t), (X0, Y1, -t), (X1, Y1, -t), (X1, Y0, -t)], u, v, 1)   # back
-            if not solid(x - 1, y): quad([(X0, Y0, -t), (X0, Y0, t), (X0, Y1, t), (X0, Y1, -t)], u, v, 2)
-            if not solid(x + 1, y): quad([(X1, Y0, t), (X1, Y0, -t), (X1, Y1, -t), (X1, Y1, t)], u, v, 3)
-            if not solid(x, y - 1): quad([(X0, Y1, t), (X1, Y1, t), (X1, Y1, -t), (X0, Y1, -t)], u, v, 4)
-            if not solid(x, y + 1): quad([(X0, Y0, -t), (X1, Y0, -t), (X1, Y0, t), (X0, Y0, t)], u, v, 5)
+    def P(x, y, side):                          # sprite pixel corner -> model (sprite y is down, model y up)
+        rx, ry = rot(x - 8, 8 - y)
+        return ((rx - mx) * sx + cx, (ry - my) * s + cy, side * t)
     nx, ny = rot(1, 0), rot(0, 1)
     normals = [(0, 0, 1), (0, 0, -1), (-nx[0], -nx[1], 0), (nx[0], nx[1], 0), (ny[0], ny[1], 0), (-ny[0], -ny[1], 0)]
-    out = ['mtllib item.mtl']
-    out += ['v %.6f %.6f %.6f' % v for v in V]
-    out += ['vt %.6f %.6f' % t_ for t_ in VT]
-    out += ['vn %.6f %.6f %.6f' % n for n in normals]
-    out += ['g MATERIAL_000', 'usemtl MATERIAL_000']
-    for ids, ti, n in F:
-        a_, b_, c_, d_ = ids
-        out.append('f %d/%d/%d %d/%d/%d %d/%d/%d' % (a_, ti, n + 1, b_, ti, n + 1, c_, ti, n + 1))
-        out.append('f %d/%d/%d %d/%d/%d %d/%d/%d' % (a_, ti, n + 1, c_, ti, n + 1, d_, ti, n + 1))
-    return '\n'.join(out) + '\n'
+    return quads_obj(pixel_quads(solid, 16), P, normals)
 
 
 def main():

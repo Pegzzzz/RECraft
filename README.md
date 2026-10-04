@@ -95,7 +95,9 @@ hits, now and then from weaker ones; a small hit marker shows every hit), `AxeDa
 `MinEnemyRank` (RE4's adaptive difficulty never drops below it; default 7 = faster, pushier enemies), `EnemyDamage` (RE4's hits x this, default 1.25), `ArrowsPerAmmo` (default 0.5).
 
 
-`RECraft.ini` (created next to `winmm.dll` on first start): hide Leon, Minecraft HUD and body in cutscenes,
+`RECraft.ini` (created next to `winmm.dll` on first start): hide Leon, Minecraft HUD in cutscenes,
+`MinecraftBodyInCutscenes` (0 by default: RE4's own Leon plays cutscenes, grabs and QTEs; 1 = your Minecraft skin
+stands in, experimental - it's drawn over RE4's picture, prompts included),
 damage scale, shared health, hiding blocks behind walls, door collision. The log is `RECraft.log` in the same folder.
 
 Performance: `OverlayHalfRes=1` draws Minecraft's HUD at half size (4x less copying per frame), `HalfRateVsync=1`

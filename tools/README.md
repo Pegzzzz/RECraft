@@ -33,7 +33,10 @@ Minecraft jar; nothing of either is distributed here.
 3. Back up the two `.lfs` files, then put `out/ss_pzzl.dat` in `BIO4\SS\<lang>\` and `out/3b000001.pack` in
    `BIO4\ImagePackHD\` (RE4 reads uncompressed files when the `.lfs` is gone). Restore the `.lfs` files to undo.
 
-Each item pixel becomes a small block (like Minecraft draws held items), sized to the RE4 weapon's slot.
+Each item pixel becomes a small block (like Minecraft draws held items), sized to the RE4 weapon's slot. The blocks
+are merged into as few faces as possible: RE4 loads `ss_pzzl.dat` into a fixed memory area and the merchant gets
+what's left after it, so the file must not grow (a 1.5 MB one crashed the shop; the merged models make it ~970 KB,
+smaller than RE4's own 1.36 MB).
 Item names and descriptions are changed by the DLL at run time (`dll/names.cpp`), no files needed.
 
 The three grenades share one model in the case, so each becomes a flat Minecraft item card (TNT shown as
